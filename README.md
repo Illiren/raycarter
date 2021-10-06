@@ -1,10 +1,10 @@
 # RayCaster SDL2
 
-Данный проект является тестовым случаем многопоточной реализации ray-сaster рендера на основе SDL2.
+Данный проект является тестовой реализацией многопоточной реализации 2.5D rayсaster рендера на основе SDL2.
 
-<img align=center src="pathRelativeToSourceDir" width='640' alt='Screen'>
+![name](./testrun.gif)
 
-_Скриншот окна рендера_
+_Ray Carter_
 ## Особенности
  * Распараллеливание рендера кадра с помощью OpenMP
  * Реализация интерфейса для работы с окном, загрузки и отрисовки текстур и обработки ввода
@@ -25,7 +25,7 @@ _Скриншот окна рендера_
 ### Сборка
 Пример сборки из билд директории:
 ```
- $ cmake -DCMAKE_BUILD_TYPE=%TypeName% -DCMAKE_PREFIX_PATH=%QTDIR% -G "%Generator name%" .
+ $ cmake -DCMAKE_BUILD_TYPE=%TypeName% -G "%Generator name%" .
  $ cmake --build . --target raycaster
 ```
 ## Лицензия
