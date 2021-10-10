@@ -2,8 +2,9 @@
 
 #include "camera.hpp"
 #include "map.hpp"
+#include "actor.hpp"
 
-struct Player
+struct Player : public Actor
 {
     enum WalkState
     {
@@ -15,13 +16,22 @@ struct Player
     };
 
     Player(Camera &camera, Map &map);
+    ~Player() override {}
 
     char walk = 0;
     char turn = 0;
     float runningSpeed = 1;
+    float speed = .0f;
+    float maxSpeed = 0.002f;
 
-    void update(float dt);
+    void update(TReal dt) override;
+    void doInteract();
 
     Map &map;
     Camera &camera;
+
+    // Actor interface
+public:
+    Vector2D position() const override;
+    void collision(Actor *another) override;
 };

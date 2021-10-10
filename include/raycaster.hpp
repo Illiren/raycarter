@@ -8,6 +8,7 @@
 #include "gameloop.hpp"
 #include "input.hpp"
 #include "player.hpp"
+#include "drawable.hpp"
 
 class RayCarter : public Window, public GameLoop
 {
@@ -15,6 +16,7 @@ public:
     RayCarter(Rectangle winSize, TReal fpsLimit = 60.f, Window *parent = nullptr);
     ~RayCarter() override {}
 
+    Map &map() {return _map;}
 
 private:
     Screen &screen;
@@ -34,6 +36,10 @@ private:
 
 private:
     void draw() override;
+    void drawSprite(const Sprite &sprite, const TArray<float> &depthBuffer);
+    void physX();
+
+    static bool collisionCheck(const Actor &rect1, const Actor &rect2);
 
     // GameLoop interface
 protected:

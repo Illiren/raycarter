@@ -199,13 +199,11 @@ void Screen::drawTriangle(Point2D t0, Point2D t1, Point2D t2, Color color)
         for(auto j=A.x();j<B.x();++j)
             drawPoint({j,t0.y()+i},color);
     }
-
-
 }
 
 void Screen::drawPoint(const Point2D &p, Color color)
 {
-    const auto index = p.x() + (_width-p.y()-1)*_width;
+    const auto index = p.x() + (p.y())*_width;
     assert(index<_framebuffer->size() && "Out of range");
     (*_framebuffer)[index] = color;
 }

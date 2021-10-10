@@ -3,6 +3,7 @@
 #include "matrix.hpp"
 #include "stddefines.hpp"
 
+using Vector2D = Math::Vector2D<TReal>;
 using Vector3D = Math::Vector3D<TReal>;
 using Vector4D = Math::Vector4D<TReal>;
 using Vector2D = Math::Vector2D<TReal>;
@@ -16,6 +17,12 @@ struct Line2D
     Point2D end;
 };
 
+struct Ray2D
+{
+    Point2D origin;
+    Point2D direction;
+};
+
 
 struct Line3D
 {
@@ -27,6 +34,15 @@ struct Rectangle
 {
     Point2D topleft;
     Point2D botright;
+
+    auto height() const;
+    auto width() const;
+};
+
+struct Circle
+{
+    Point2D origin;
+    TReal   radius;
 };
 
 struct Triangle

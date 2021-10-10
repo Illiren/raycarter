@@ -76,12 +76,13 @@ protected:
 
 private:
     bool _updating = false;
+    bool _currentFB = 0;
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
-    SDL_Texture *framebuffer_texture = nullptr;    
+    SDL_Texture *framebuffer_texture = nullptr;
     TArray<TUint32> *_framebuffer = &_fb[_currentFB];
     TArray<TUint32> _fb[2];
-    bool _currentFB = 0;
+
 
     TSize _width,
           _height;

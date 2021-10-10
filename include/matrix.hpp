@@ -117,7 +117,7 @@ struct Matrix<T,1,Num> //Vector
     using Reference = Type &;
     using ConstReference = const Type &;
     using ColumnRef = Type &;
-    using ConstColumnRef = const ColumnRef;
+    using ConstColumnRef = const Type &;
 
 
     Matrix() noexcept
@@ -207,7 +207,7 @@ struct Matrix<T,1,4>
     using Reference = Type &;
     using ConstReference = const Type &;
     using ColumnRef = Type &;
-    using ConstColumnRef = const ColumnRef;
+    using ConstColumnRef = const Type &;
 
     static constexpr TSize Num = 4;
 
@@ -341,7 +341,7 @@ struct Matrix<T,1,3>
     using Reference = Type &;
     using ConstReference = const Type &;
     using ColumnRef = Type &;
-    using ConstColumnRef = const ColumnRef;
+    using ConstColumnRef = const Type &;
 
     static constexpr TSize Num = 3;
 
@@ -459,7 +459,7 @@ struct Matrix<T,1,2>
     using Reference = Type &;
     using ConstReference = const Type &;
     using ColumnRef = Type &;
-    using ConstColumnRef = const ColumnRef;
+    using ConstColumnRef = const Type &;
 
     static constexpr TSize Num = 2;
 
@@ -561,9 +561,9 @@ struct Matrix<T,1,1> //LoL
     using Pointer = Type*;
     using ConstPointer = Type const *;
     using Reference = Type &;
-    using ConstReference = const Reference;
+    using ConstReference = const Type &;
     using ColumnRef = Type &;
-    using ConstColumnRef = const ColumnRef;
+    using ConstColumnRef = const Type &;
 
     Matrix() noexcept
     {}
