@@ -1,6 +1,5 @@
 #pragma once
 
-#include "typedefines.hpp"
 #include "stddefines.hpp"
 #include "texture.hpp"
 #include <list>
@@ -34,9 +33,20 @@ struct Sprite : public Drawable
     void update() override;
     uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
 
-
     bool operator<(const Sprite &s) const;
 
     TSize texid;
     Texture tex;
+};
+
+struct NSprite : public Drawable
+{
+    NSprite(PTexture texture, Vector2D pos);
+    ~NSprite() override;
+
+    void update() override;
+    bool operator<(const NSprite &s) const;
+    uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
+
+    PTexture tex;
 };

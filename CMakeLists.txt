@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.15)
 
 project(raycarter)
 
@@ -12,8 +12,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_STANDARD 20)
 
+
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
+
 
 find_package(OpenMP REQUIRED)
 if (OPENMP_FOUND)
@@ -23,6 +25,10 @@ if (OPENMP_FOUND)
 endif()
 
 find_package(OpenAL REQUIRED)
+#add_library(asio INTERFACE)
+#target_compile_options(asio INTERFACE ASIO_STANDALONE)
+#target_include_directories(asio INTERFACE ${CMAKE_SOURCE_DIR}/asio/include)
+
 
 file(GLOB_RECURSE LibFiles
     "${SRC_DIR}/include/*.hpp")
@@ -36,11 +42,15 @@ add_custom_target(sources SOURCES ${SrcFiles})
 
 include_directories("${SRC_DIR}/include")
 
+
 file(COPY resources/walltext.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/monsters.bmp DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY resources/player.bmp DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY resources/weapon.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/test.wav DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY resources/smallfont.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} omp openal)
 target_include_directories(${PROJECT_NAME} PRIVATE "${SRC_DIR}")
+target_link_libraries(${PROJECT_NAME} openal)

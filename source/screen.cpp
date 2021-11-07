@@ -1,4 +1,5 @@
 #include <iostream>
+#include <SDL2/SDL_ttf.h>
 #include "screen.hpp"
 
 
@@ -43,6 +44,7 @@ bool Screen::init()
         std::cout << "Failed to create framebuffer texture: " << SDL_GetError() << std::endl;
         return false;
     }
+
     return true;
 }
 
@@ -50,6 +52,20 @@ void Screen::clear(Color defaultColor)
 {
     //_framebuffer = std::vector<TUint32>(_width*_height, defaultColor);
     std::fill(_framebuffer->begin(),_framebuffer->end(),defaultColor);
+}
+
+void Screen::fill(Point2D start, Point2D end, std::function<Color (Point2D)> coloralg)
+{
+    for(;start!=end;inc(start))
+        (*_framebuffer)[pointToIndex(start)] = coloralg(start);
+}
+
+void Screen::clearRectacngle(Point2D origin, Point2D end, Color defaultColor)
+{
+    const auto startpoint = origin.x() + (origin.y())*_width;
+    const auto endpoint = end.x() + end.y()*_width;
+
+    std::fill(_framebuffer->begin()+startpoint, _framebuffer->begin()+endpoint, defaultColor);
 }
 
 void Screen::clearOffbuffer(Color defaultColor)
@@ -71,6 +87,7 @@ void Screen::update()
 
     _updating = false;
 }
+
 
 void Screen::drawRectangle(Point2D p1, Point2D p2, Color color)
 {
@@ -202,26 +219,57 @@ void Screen::drawTriangle(Point2D t0, Point2D t1, Point2D t2, Color color)
 }
 
 void Screen::drawPoint(const Point2D &p, Color color)
-{
-    const auto index = p.x() + (p.y())*_width;
-    assert(index<_framebuffer->size() && "Out of range");
-    (*_framebuffer)[index] = color;
+{    
+    (*_framebuffer)[pointToIndex(p)] = color;
 }
 
-void Screen::drawStaticMesh(const StaticMesh &mesh, Color color)
+void Screen::drawTexture(const NTexture &text, Point2D p, TReal hs, TReal ws)
 {
-    for(auto i=0;i<mesh.nfaces();++i)
-    {
-        const auto face = mesh.face(i);
-        Point2D screenCord[3];
-        for(int j=0;j<3;++j)
+    auto w = text.w;
+    auto h = text.h;
+    auto hscale = static_cast<int>(h/hs);
+    auto wscale = static_cast<int>(w/ws);
+    auto xoffset = p.x();
+    auto yoffset = p.y();
+
+    for(TSize i = 0;i<wscale;++i)
+        for(TSize j=0;j<hscale;++j)
         {
-            Vector3D worldCoord = mesh.vert(face[j]);
-            screenCord[j] = Point2D((worldCoord.x()+1.f)*width()/2.f,(worldCoord.y()+1.f)*height()/2.f);
+            Color color = text.get(i*h/hscale,j*w/wscale);
+            if(color.alpha() > 127)
+            {
+                const auto x = xoffset+i;
+                const auto y = yoffset+j;
+                if(x < _width && y < _height)
+                    drawPoint({x,y},color);
+            }
         }
-        drawTriangle(screenCord[0],screenCord[1],screenCord[2],color);
-    }
 }
+
+void Screen::drawTexture(const NTexture &text, Rectangle2D<TSize> p, TReal hs, TReal ws)
+{
+    const auto w = text.w;
+    const auto h = text.h;
+    const auto orig = p.topleft;
+    const auto end = p.botright;
+    assert(orig.x() > 0 && orig.y() > 0 && "Out of range");
+    assert(end.x() < _width && end.y() < _height && "Out of range too");
+    const auto hscale = static_cast<int>(h/hs);
+    const auto wscale = static_cast<int>(w/ws);
+
+    for(TSize i = 0; i < wscale; ++i)
+        for(TSize j = 0; j < hscale; ++j)
+        {
+            Color color = text.get(i*h/hscale, j*w/wscale);
+            const auto x = orig.x() + i;
+            const auto y = orig.y() + j;
+
+            const bool cond = (color.alpha() > 128) && (x < end.x()) && (y < end.y());
+            if(cond)
+                drawPoint({x,y}, color);
+        }
+}
+
 
 Screen &GetScreen()
 {

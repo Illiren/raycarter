@@ -47,3 +47,26 @@ bool Sprite::operator<(const Sprite &s) const
 {
     return dist > s.dist;
 }
+
+NSprite::NSprite(PTexture texture, Vector2D pos) :
+      Drawable(pos.x(),pos.y()),
+      tex(texture)
+{}
+
+NSprite::~NSprite()
+{}
+
+void NSprite::update()
+{}
+
+bool NSprite::operator < (const NSprite &s) const
+{
+    return dist > s.dist;
+}
+
+uint32_t NSprite::get(TSize i, TSize j, TSize spriteScreenSize) const
+{
+    assert(isValid(tex) && "texture is invalid");
+    const auto p = tex.lock();
+    return p->get(i*p->h/spriteScreenSize,j*p->w/spriteScreenSize);
+}

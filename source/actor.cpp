@@ -26,9 +26,9 @@ Vector2D Actor::position() const
     return {-1.f,-1.f};
 }
 
-Rectangle Actor::getRect() const
+Rectangle2D<TReal> Actor::getRect() const
 {
-    Rectangle rect;
+    Rectangle2D<TReal> rect;
     rect.topleft.x() = position().x() - rectSize.x();
     rect.topleft.y() = position().y() - rectSize.y();
 

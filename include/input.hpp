@@ -1,8 +1,6 @@
-#ifndef INPUT_HPP
-#define INPUT_HPP
+#pragma once
 
 #include <functional>
-#include "typedefines.hpp"
 #include "stddefines.hpp"
 #include "SDL.h"
 
@@ -60,4 +58,3 @@ private:
 InputManager &GetInputManager();
 
 
-#endif //INPUT_HPP

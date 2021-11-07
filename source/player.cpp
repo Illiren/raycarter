@@ -41,7 +41,7 @@ void Player::update(TReal dt)
 
 void Player::doInteract()
 {
-    auto actor = map.trace({camera.origin.x(), camera.origin.y()}, camera.direction, 2);
+    auto actor = map.trace({camera.origin.x(), camera.origin.y()}, camera.direction, 2, this);
     if(actor)
         actor->interract(this);
 }
@@ -51,7 +51,6 @@ Vector2D Player::position() const
     return {camera.origin.x(), camera.origin.y()};
 }
 
-#include <iostream>
 void Player::collision(Actor *another)
 {
     //speed = 0;
@@ -61,7 +60,7 @@ void Player::collision(Actor *another)
     auto l = std::sqrt(dir.norm());
     dir *= 1/l;
 
-    camera.origin.x() -= dir.x();
-    camera.origin.y() -= dir.y();
+    camera.origin.x() += dir.x();
+    camera.origin.y() += dir.y();
 }
 

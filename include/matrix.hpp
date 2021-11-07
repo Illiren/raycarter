@@ -1,9 +1,9 @@
-#ifndef MATHSTATICMATRIX_HPP
-#define MATHSTATICMATRIX_HPP
+#pragma once
+
 
 #include <cmath>
 
-#include "typedefines.hpp"
+#include "stddefines.hpp"
 
 namespace Math
 {
@@ -648,18 +648,18 @@ bool operator!=(Matrix<T,Row,Col> lhs, Matrix<T,Row,Col> rhs)
 {
     for(TSize i=Row;i--;)
         for(TSize j=Col;j--;)
-            if(lhs[i][j] == rhs[i][j])
-                return false;
-    return true;
+            if(lhs[i][j] != rhs[i][j])
+                return true;
+    return false;
 }
 
 template<typename T, TSize Num>
 bool operator!=(Vector<T,Num> lhs, Vector<T,Num> rhs)
 {
     for(TSize i=Num;i--;)
-        if(lhs[i] == rhs[i])
-            return false;
-    return true;
+        if(lhs[i] != rhs[i])
+            return true;
+    return false;
 }
 
 template<typename T, TSize Row, TSize Col>
@@ -1032,13 +1032,9 @@ Matrix<T,Rows,Cols> deteminant(const Matrix<T,Rows,Cols> &matrix) noexcept
     static_assert(Rows == Cols, "Matrix must be squart");
 
     Matrix<T,Rows,Cols> m;
-
-}
-
 }
 
 
 
 
-
-#endif //MATHSTATICMATRIX_HPP
+}

@@ -11,7 +11,7 @@ public:
     Map(const char *map, TSize width, TSize height, const TString &filename);
 
     class Actor *spawn();
-    class Actor *trace(Vector2D origin, TReal agle, TReal dt);
+    class Actor *trace(Vector2D origin, TReal agle, TReal dt, class Actor *actorToIgnore);
 
     TSize width() const;
     TSize height() const;

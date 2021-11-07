@@ -1,7 +1,6 @@
-#ifndef COLOR_HPP
-#define COLOR_HPP
+#pragma once
 
-#include "typedefines.hpp"
+#include "stddefines.hpp"
 
 
 class Color
@@ -62,5 +61,3 @@ constexpr Color Color::Green = Color(0,255,0);
 constexpr Color Color::Blue = Color(0,0,255);
 constexpr Color Color::Black = Color(0,0,0);
 
-
-#endif //COLOR_HPP

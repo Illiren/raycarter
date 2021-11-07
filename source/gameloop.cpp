@@ -11,7 +11,7 @@ void GameLoop::run()
 
     float lag = 0.0;
     float time = 0.f;
-    int fps = 0.f;
+    float fps = 0.f;
 
     cout << "Starting..." << endl;
 
@@ -23,7 +23,8 @@ void GameLoop::run()
 
         time += elapsed.count();
         ++fps;
-        lag += elapsed.count();
+        lag=elapsed.count();
+        //lag += elapsed.count();
 
         {
             auto start = chrono::steady_clock::now();
@@ -33,14 +34,19 @@ void GameLoop::run()
             //cout << "Input time: " << chrono::duration<float, milli>(diff).count() << " ms" << endl;
         }
 
-        if(_state != Pause)
+
         {
             auto start = chrono::steady_clock::now();
-            while(lag >= msPerUpdate())
+            /*while(lag >= msPerUpdate())
             {
                 lag-=msPerUpdate();
-                update(msPerUpdate());
-            }
+                if(_state != Pause)
+                    update(msPerUpdate());
+            }*/
+
+            if(_state != Pause)
+                update(lag);
+
             auto end = chrono::steady_clock::now();
             auto diff = end - start;
             //cout << "Update time: " << chrono::duration<float, milli>(diff).count() << " ms" << endl;
@@ -56,13 +62,17 @@ void GameLoop::run()
 
         auto endOfFrame = chrono::steady_clock::now();
 
-        auto freeTime = TimeMS(msPerUpdate()) - (endOfFrame - currentTime);
-
+        auto freeTime = TimeMS(msPerUpdate()) - TimeMS(endOfFrame - currentTime);
         this_thread::sleep_for(freeTime);
+
+        //cout << "Start time " << TimeMS(currentTime).count() << '\n';
+        //cout << "End time " << duration_cast(endOfFrame).count() << '\n';
 
         if(time >= 1000)
         {
+            cout << "Sleeping for " << freeTime.count() << '\n';
             cout << "FPS: " << fps << endl;
+            _fps = fps;
             fps = 0;
             time = 0;
         }
@@ -82,13 +92,23 @@ void GameLoop::start()
     if(_state)
         return;
     _state = Running;
+    init();
     run();
 
-    //_loopthread = std::thread([a = this]{a->run();});
+    //_loopthread = std::thread(&GameLoop::run, this);
     //_loopthread.join();
+}
+
+void GameLoop::pause()
+{
+    if(_state == Running)
+        _state = Pause;
+    else if (_state == Pause)
+        _state = Running;
 }
 
 void GameLoop::stop()
 {
     _state = Idle;
+
 }

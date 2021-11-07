@@ -6,6 +6,7 @@
 #include <bit>
 #include <cstring>
 
+
 bool checkALErrors(const TString &filename, const std::uint_fast32_t line)
 {
     ALenum error;
@@ -288,6 +289,25 @@ bool loadWAV(std::ifstream &file,
     return true;
 }
 
+Wav::Wav(TString filename)
+{
+    std::ifstream in(filename, std::ios::binary);
+
+    if(!loadWAV(in,channel,sampleRate,bitPerSample,size))
+    {
+        std::cout << "Could not load wav header of " << filename << std::endl;
+        return;
+    }
+
+    data.resize(size);
+    in.read(data.data(),size);
+}
+
+Wav::operator bool() const noexcept
+{
+    return !data.empty();
+}
+
 Audio::Audio()
 {
     openALDevice = alcOpenDevice(nullptr);
@@ -355,6 +375,54 @@ bool Audio::play()
     return true;
 }
 
+bool Audio::play(PSound wav, bool repeatable)
+{
+    auto sound = wav.lock();
+    ALuint buffer;
+    alCall(alGenBuffers,1,&buffer);
+    ALenum format;
+
+    const auto channel = sound->channel;
+    const auto bitPerSample = sound->bitPerSample;
+    const auto data = sound->data.data();
+    const auto size = sound->data.size();
+    const auto sampleRate = sound->sampleRate;
+
+    if(channel == 1 && bitPerSample == 8)
+        format = AL_FORMAT_MONO8;
+    else if(channel == 1 && bitPerSample == 16)
+        format = AL_FORMAT_MONO16;
+    else if(channel == 2 && bitPerSample == 8)
+        format = AL_FORMAT_STEREO8;
+    else if(channel == 2 && bitPerSample == 16)
+        format = AL_FORMAT_STEREO16;
+    else
+    {
+        //Error
+        return false;
+    }
+    alCall(alBufferData, buffer, format, data, size, sampleRate);
+
+    ALuint source;
+    alCall(alGenSources,1,&source);
+    alCall(alSourcef,source,AL_PITCH,1);
+    alCall(alSource3f,source,AL_POSITION,0,0,0);
+    alCall(alSource3f,source,AL_VELOCITY,0,0,0);
+    alCall(alSourcei,source,AL_LOOPING,repeatable);
+    alCall(alSourcei,source,AL_BUFFER,buffer);
+    alCall(alSourcePlay,source);
+
+    ALint state = AL_PLAYING;
+    while(state == AL_PLAYING)
+    {
+        alCall(alGetSourcei,source,AL_SOURCE_STATE,&state);
+    }
+
+    alCall(alDeleteSources,1,&source);
+    alCall(alDeleteBuffers,1,&buffer);
+    return true;
+}
+
 TArray<TString> Audio::getAvailableDevices(ALCdevice *device)
 {
     const ALCchar * devices;
@@ -389,4 +457,223 @@ void Audio::load(TString filename)
     in.read(data.data(),size);
 }
 
+
+
+AudioDB::AudioDB()
+{}
+
+bool AudioDB::load(TString filename, TString nameBase)
+{
+    TString name = getName(nameBase);
+    Wav *w = new Wav(filename);
+    if(!w || !(*w))
+    {
+        std::cout << "Couldn't load wav" << std::endl;
+        delete w;
+        return false;
+    }
+
+    _db.insert({name, TShared(w)});
+    return true;
+}
+
+PSound AudioDB::operator[](TString id) const
+{
+    return _db.at(id);
+}
+
+TString AudioDB::getName(TString baseName) const
+{
+    unsigned int counter = 0;
+    TString newName = baseName;
+
+    while(1) //THE BAD THING
+    {
+        auto it = _db.find(newName);
+
+        if(it == _db.end())
+            return newName;
+        else
+        {
+            if(counter == std::numeric_limits<decltype(counter)>::max())
+                break;
+            newName = baseName+std::to_string(counter++);
+        }
+    }
+
+    return "FUCK"; //Signals an error
+}
+
+
+std::weak_ptr<bool> NAudio::play(PSound wav, bool repeatable)
+{
+    std::shared_ptr<bool> sharedBool(new bool);
+
+    enqueue([this, wav, repeatable, sharedBool]()
+            {
+                if(wav.expired())
+                {
+                    std::cout << "Error sound is expired " << std::endl;
+                    return;
+                }
+                auto sound = wav.lock();
+                const auto channel = sound->channel;
+                const auto bitPerSample = sound->bitPerSample;
+                const auto data = sound->data.data();
+                const auto size = sound->data.size();
+                const auto sampleRate = sound->sampleRate;
+                ALuint buffer;
+                alCall(alGenBuffers,1,&buffer);
+                ALenum format;
+                if(channel == 1 && bitPerSample == 8)
+                    format = AL_FORMAT_MONO8;
+                else if(channel == 1 && bitPerSample == 16)
+                    format = AL_FORMAT_MONO16;
+                else if(channel == 2 && bitPerSample == 8)
+                    format = AL_FORMAT_STEREO8;
+                else if(channel == 2 && bitPerSample == 16)
+                    format = AL_FORMAT_STEREO16;
+                else
+                {
+                    //Error
+                    return;
+                }
+                alCall(alBufferData, buffer, format, data, size, sampleRate);
+
+                ALuint source;
+                alCall(alGenSources,1,&source);
+                alCall(alSourcef, source, AL_PITCH, 1);
+                alCall(alSource3f, source, AL_POSITION, 0,0,0);
+                alCall(alSource3f, source, AL_VELOCITY, 0,0,0);
+                alCall(alSourcei, source, AL_LOOPING, AL_FALSE);
+                alCall(alSourcei, source, AL_BUFFER, buffer);
+                alCall(alSourcePlay, source);
+
+                ALint state = AL_PLAYING;
+                *sharedBool = true;
+                while(state == AL_PLAYING && (*sharedBool == true))
+                {
+                    alCall(alGetSourcei, source, AL_SOURCE_STATE, &state);
+                }
+
+                alCall(alDeleteSources,1,&source);
+                alCall(alDeleteBuffers,1,&buffer);
+            });
+    return sharedBool;
+}
+
+void NAudio::enqueue(const Task &f)
+{
+    {
+        std::unique_lock<TMutex> lock(_queueMutex);
+        if(!_running)
+            throw std::runtime_error("Enqueued on stopped thread pool");
+        _tasks.emplace(f);
+    }
+    _cond.notify_one();
+}
+
+void NAudio::enqueue(Task &&f)
+{
+    {
+        std::unique_lock<TMutex> lock(_queueMutex);
+        if(!_running)
+            throw std::runtime_error("Enqueued on stopped thread pool");
+        _tasks.emplace(std::move(f));
+    }
+    _cond.notify_one();
+}
+
+NAudio::NAudio()
+{
+    openALDevice = alcOpenDevice(nullptr);
+    if(!openALDevice)
+    {
+        std::cout << "Audio error: couldn't open device" << std::endl;
+        return;
+    }
+
+    if(!alcCall(alcCreateContext,openALContext,openALDevice,openALDevice, nullptr) || !openALContext)
+    {
+        std::cout << "Audio error: couldn't create context" << std::endl;
+        return;
+    }
+
+    contextMadeCurrent = false;
+    if(!alcCall(alcMakeContextCurrent,contextMadeCurrent,openALDevice,openALContext) || contextMadeCurrent != ALC_TRUE)
+    {
+        std::cout << "Audio error: couldn't make context current" << std::endl;
+        return;
+    }
+
+    TSize threads = std::max(Thread::hardware_concurrency(), 1u);
+    _running = true;
+    for(TSize i=0;i<threads;++i)
+    {
+        _worker.emplace_back(
+            [this]
+            {
+                while(true)
+                {
+                    Task task;
+
+                    {
+                        std::unique_lock<TMutex> lock(this->_queueMutex);
+                        this->_cond.wait(lock, [this] {return !this->_running || !this->_tasks.empty();});
+
+                        if(!this->_running && this->_tasks.empty())
+                            return;
+                        task = std::move(_tasks.front());
+                        this->_tasks.pop();
+                    }
+
+                    task();
+                }
+            });
+    }
+}
+
+NAudio::~NAudio()
+{
+    {
+        std::unique_lock<TMutex> lock(_queueMutex);
+        _running = false;
+    }
+
+    _cond.notify_all();
+
+    for(auto &worker : _worker)
+        worker.join();
+
+    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, nullptr);
+    alcCall(alcDestroyContext,openALDevice, openALContext);
+    ALCboolean closed;
+    alcCall(alcCloseDevice, closed, openALDevice, openALDevice);
+}
+
+NAudio &GetAudio()
+{
+    static NAudio audio;
+    return audio;
+}
 #undef alCall
+
+void SoundSequence::play()
+{
+    if(sound.expired())
+        return; //No sound
+
+    auto &a = GetAudio();
+
+    if(playstate.expired())
+    {
+        playstate = a.play(sound);
+    }
+    else
+    {
+        *(playstate.lock())=false;
+        playstate = a.play(sound);
+    }
+}
+
+bool SoundSequence::isPlayed() const {return !playstate.expired();}

@@ -16,7 +16,7 @@ public:
     Map *map;
     Vector2D rectSize;
 
-    Rectangle getRect() const;
+    Rectangle2D<TReal> getRect() const;
 
     virtual void collision(Actor *another);
     virtual void interract(Actor *causer);

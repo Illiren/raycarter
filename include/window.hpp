@@ -5,7 +5,7 @@
 class Window
 {
 public:
-    Window(Rectangle rect, Window *parent = nullptr);
+    Window(Rectangle2D<TSize> rect, Window *parent = nullptr);
     virtual ~Window() {}
 
     inline virtual void draw() = 0;

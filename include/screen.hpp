@@ -1,12 +1,13 @@
-#ifndef SCREEN_HPP
-#define SCREEN_HPP
+#pragma once
 
 #include <SDL.h>
-#include "typedefines.hpp"
+#include <SDL2/SDL_ttf.h>
+#include <functional>
 #include "stddefines.hpp"
 #include "color.hpp"
 #include "geometry.hpp"
-#include "staticmesh.hpp"
+#include "texture.hpp"
+
 
 //TODO: Double buffer and swap buffers
 
@@ -22,6 +23,8 @@ public:
     bool init();
 
     void clear(Color defaultColor = Color::White);
+    void fill(Point2D start, Point2D end, std::function<Color (Point2D)> coloralg);
+    void clearRectacngle(Point2D origin, Point2D end, Color defaultColor = Color::White);
     void clearOffbuffer(Color defaultColor = Color::White);
 
     void update();
@@ -47,17 +50,12 @@ public:
     void drawLine(Point2D start, Point2D end, Color color);
     void drawTriangle(Point2D t0, Point2D t1, Point2D t2, Color color);
     void drawPoint(const Point2D &p, Color color);
-    void drawStaticMesh(const StaticMesh &mesh, Color color); //TODO: Move somewhere
+    void drawTexture(const NTexture &text, Point2D p, TReal hscale = 1.f, TReal wscale = 1.f);
+    void drawTexture(const NTexture &text, Rectangle2D<TSize> p, TReal hscale = 1.f, TReal wscale = 1.f);
 
-    void draw(Line2D figure);
-    void draw(Rectangle rect);
-    void draw(Triangle triangle);
-    void draw(Point2D &point);
 
     auto rawData() {return _framebuffer->data();}
-
     inline bool isBusy() const {return _updating;}
-
 
 
 protected:
@@ -73,6 +71,25 @@ protected:
         //clear();
     }
 
+    inline TSize pointToIndex(const Point2D &p)
+    {
+        const auto index = p.x() + (p.y())*_width;
+        assert(index<_framebuffer->size() && "Out of range");
+        return index;
+    }
+
+    inline void inc(Point2D &p)
+    {
+        if(p.x() + 1 == _width)
+        {
+            p.x() = 0;
+            p.y()++;
+        }
+        else
+        {
+            p.x()++;
+        }
+    }
 
 private:
     bool _updating = false;
@@ -83,13 +100,8 @@ private:
     TArray<TUint32> *_framebuffer = &_fb[_currentFB];
     TArray<TUint32> _fb[2];
 
-
     TSize _width,
           _height;
 };
 
 Screen &GetScreen();
-
-
-
-#endif //SCREEN_HPP

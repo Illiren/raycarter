@@ -1,12 +1,22 @@
-#ifndef STDDEFINES_HPP
-#define STDDEFINES_HPP
+#pragma once
 
 //TODO: Rename To stdoverrides or something
 
+#include <limits>
+#include <cassert>
 #include <vector>
 #include <string>
 #include <unordered_map> //TODO: Replace by custom hash
-#include "typedefines.hpp"
+
+#define normal   //for symmetry (short int, normal int, long int)
+
+using TReal = float;
+using TUInt8 = unsigned char;
+using TSize = std::size_t;
+using TUint32 = unsigned int;
+using TUint64 = unsigned long int;
+using TInt32 = signed int;
+using TInt64 = signed long int;
 
 template<typename T, typename A = std::allocator<T>>
 using TArray = std::vector<T,A>;
@@ -25,7 +35,3 @@ using TTuple = std::tuple<Args...>;
 
 using TString = std::string;
 
-
-
-
-#endif //STDDEFINES_HPP

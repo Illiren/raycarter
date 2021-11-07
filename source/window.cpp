@@ -1,6 +1,6 @@
 #include "window.hpp"
 
-Window::Window(Rectangle rect, Window *parent) :
+Window::Window(Rectangle2D<TSize> rect, Window *parent) :
       _parent(parent),
       _origin(rect.topleft)
 {

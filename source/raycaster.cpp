@@ -3,7 +3,67 @@
 #include <iostream>
 
 
-RayCarter::RayCarter(Rectangle winSize, TReal fpsLimit, Window *parent) :
+CustomServer::CustomServer(uint16_t nPort) :
+      Server<CustomMsgTypes>(nPort)
+{}
+
+bool CustomServer::onClientConnect(std::shared_ptr<Connection<CustomMsgTypes> > client)
+{
+    Message<CustomMsgTypes> msg;
+    msg.header.id = CustomMsgTypes::ServerAccept;
+    client->send(msg);
+    return true;
+}
+
+void CustomServer::onClientDisconnect(std::shared_ptr<Connection<CustomMsgTypes> > client)
+{
+    std::cout << "Removing client [" << client->getID() << "]\n";
+}
+
+void CustomServer::onMessage(std::shared_ptr<Connection<CustomMsgTypes>> client, Message<CustomMsgTypes> &msg)
+{
+    switch(msg.header.id)
+    {
+    case CustomMsgTypes::ServerPing:
+    {
+        std::cout << "[" << client->getID() << "]: Server Ping\n";
+        client->send(msg);
+    }
+    break;
+    case CustomMsgTypes::MessageAll:
+    {
+        std::cout << "[" << client->getID() << "]: Message All\n";
+        Message<CustomMsgTypes> msg;
+        msg.header.id = CustomMsgTypes::ServerMessage;
+        msg << client->getID();
+        messageAllClients(msg, client);
+    }
+    break;
+    default:
+        break;
+    }
+}
+
+void CustomClient::pingServer()
+{
+    Message<CustomMsgTypes> msg;
+    msg.header.id = CustomMsgTypes::ServerPing;
+
+    std::chrono::system_clock::time_point timeNow = std::chrono::system_clock::now();
+    msg << timeNow;
+    send(msg);
+}
+
+void CustomClient::messageAll()
+{
+    Message<CustomMsgTypes> msg;
+    msg.header.id = CustomMsgTypes::MessageAll;
+    send(msg);
+}
+
+
+
+RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit, Window *parent) :
       Window(winSize,parent),
       GameLoop(fpsLimit),
       screen(GetScreen()),
@@ -11,7 +71,9 @@ RayCarter::RayCarter(Rectangle winSize, TReal fpsLimit, Window *parent) :
       _map(mapdata,mapW,mapH,"walltext.bmp"),
       _player(_camera,_map),
       _mapOrigin({0,0}),
-      _mapSize({100,100})
+      _mapSize({100,100}),
+      _guiHeight(96),
+      _font("smallfont.bmp",15,15,16,16,1,' ')
 {
     screen.resize(width(),height());
     if(!screen.init())
@@ -23,7 +85,7 @@ RayCarter::RayCarter(Rectangle winSize, TReal fpsLimit, Window *parent) :
     _camera.direction = 3.f*static_cast<float>(M_PI)/2.f;
     _camera.origin.x() = 3.456f;
     _camera.origin.y() = 2.345f;
-    _camera.fov = static_cast<float>(M_PI)/3.f;
+    _camera.fov = 1;// static_cast<float>(M_PI)/3.14f;
     _camera.distance = 20;
 
     InputManager &keyMap = GetInputManager();
@@ -51,13 +113,32 @@ RayCarter::RayCarter(Rectangle winSize, TReal fpsLimit, Window *parent) :
 
 void RayCarter::draw()
 {
-    screen.clear(Color(100,100,100));
+    //screen.clear(Color(100,100,100));
 
     const size_t mapRectW = _mapSize.x()/_map.width();
     const size_t mapRectH = _mapSize.y()/_map.height();
     std::vector<float> depthBuffer(_width, 1e3);
 
-#pragma omp parallel for
+    Point2D org = {mapRectW,_height-_guiHeight};
+
+    screen.drawRectangle(org,_width,_guiHeight,Color(150,150,150));
+
+    //#pragma omp parallel for collapse(2)
+    for(TSize j=0; j<_map.height(); ++j)
+        for(TSize i=0; i<_map.width(); ++i)
+        {
+            if(_map[i+j*_map.width()]==' ')
+                continue;
+
+            const TSize rectX = i*mapRectW;
+            const TSize rectY = _height-6-j*mapRectH;
+
+            //const auto icolor = _map[i+j*_map.width()] - '0';
+
+            screen.drawRectangle({rectX,rectY},mapRectW,mapRectH,Color::Black);
+        }
+
+//#pragma omp parallel for
     for(size_t i=0;i<_width;++i)
     {
         const float angle = _camera.direction - _camera.fov/2 + _camera.fov*i/float(_width);
@@ -73,7 +154,7 @@ void RayCarter::draw()
             const TSize pixY = static_cast<TSize>(cy*mapRectH);
 
             const auto mapPos = static_cast<int>(cx) + static_cast<int>(cy) * static_cast<int>(_map.width());
-            screen[pixX+(pixY-1)*screen.width()] = Color(160,160,160,0);
+            screen[pixX+(_height-pixY-1)*screen.width()] = Color::White;//Color(160,160,160,0);
 
             if(_map[mapPos] != ' ') // if something on the way
             {
@@ -86,57 +167,62 @@ void RayCarter::draw()
 
                 TArray<uint32_t> column = _map.getTexture(itex, xtex, columnH);
 
-                const auto x = i;
-                const auto y = _height/2-columnH/2;
+                TSize wallTop = _height/2 - columnH/2;
+                TSize wallBottom = wallTop+columnH;
 
-                TSize px = i;
+                for(TSize j=0;j<_height;++j)
+                {
+                    if(j >= _height-_guiHeight) break;
+                    if(j < wallTop)
+                    {
+                        Color color(150*(j/(float)_height*2), 50 + 150 * (j/(float)_height*2), 200);
+                        screen.drawPoint({i,j},color);
+                    }
+                    else if((j >= wallBottom) && (j < _height-_guiHeight))
+                    {
+                        Color color(120 - 70 * ((_height - j)/ (float)_height * 2), 150 - 50 * ((_height - j)/(float)_height*2), 20);
+                        screen.drawPoint({i,j},color);
+                    }
+                }
                 for(TSize j=0;j<columnH;++j)
                 {
-                    TSize py = j + screen.height()/2 - columnH/2;
-                    if(py>=0 && py < screen.height())
+                    TSize py = j + screen.height()/2 - columnH/2;                    
+                    if(py>=0 && py < _height-_guiHeight)
                     {
                         Color c(column[j]);
-
-                        screen.drawPoint({px,py},Color(c));
+                        //if(py < _height-_guiHeight)
+                            screen.drawPoint({i,py},Color(c));
                     }
                 }
 
                 break;
             }
-        }
+        }        
     }
 
-    //screen.drawRectangle(_mapOrigin,_mapSize.x(),mapRectW,Color::White);
 
-#pragma omp parallel for collapse(2)
-    for(TSize j=0; j<_map.height(); ++j)
-        for(TSize i=0; i<_map.width(); ++i)
-        {
-            if(_map[i+j*_map.width()]==' ')
-                continue;
-
-            const TSize rectX = i*mapRectW;
-            const TSize rectY = j*mapRectH;
-
-            const auto icolor = _map[i+j*_map.width()] - '0';
-
-            screen.drawRectangle({rectX,rectY},mapRectW,mapRectH,Color::Black);
-        }
 
     const TSize playerPosX = _camera.origin.x()*mapRectW-2;
-    const TSize playerPosY = _camera.origin.y()*mapRectH-2;
+    const TSize playerPosY = _height-_camera.origin.y()*mapRectH-2;
     screen.drawRectangle({playerPosX,playerPosY},5,5,Color::Black);
 
     auto &drawList = Drawable::getRegister();
 
     for(auto &drawable : drawList)
     {
+        drawable->updateDist(_camera.origin.x(),_camera.origin.y());
         Sprite* s = dynamic_cast<Sprite*>(drawable);
-        s->updateDist(_camera.origin.x(),_camera.origin.y());
-        drawSprite(*s,depthBuffer);
+        if(s)
+        {
+            drawSprite(*s,depthBuffer);
+            continue;
+        }
+        NSprite *n = dynamic_cast<NSprite*>(drawable);
+        drawSprite(*n,depthBuffer);
     }
 
-    screen.update();
+    drawGUI();
+    screen.update();    
 }
 
 void RayCarter::drawSprite(const Sprite &sprite, const TArray<float> &depthBuffer)
@@ -150,7 +236,7 @@ void RayCarter::drawSprite(const Sprite &sprite, const TArray<float> &depthBuffe
     int hOffset = (spriteDir - _camera.direction)*(_width)/(_camera.fov) + (_width)/2 - spriteScreenSize/2;
     int vOffset = _height/2 - spriteScreenSize/2;
 
-#pragma omp parallel for
+//#pragma omp parallel for
     for(TSize i=0;i<spriteScreenSize;++i)
     {
         if(hOffset+int(i)<0 || hOffset+i >= _width) continue;
@@ -163,11 +249,70 @@ void RayCarter::drawSprite(const Sprite &sprite, const TArray<float> &depthBuffe
             {
                 const auto x = hOffset+i;
                 const auto y = vOffset+j;
-
-                screen.drawPoint({x,y},color);
+                if(y < _height-_guiHeight)
+                    screen.drawPoint({x,y},color);
             }
         }
     }
+}
+
+void RayCarter::drawSprite(const NSprite &sprite, const TArray<float> &depthBuffer)
+{
+    auto texture = sprite.tex.lock();
+    float spriteDir = atan2(sprite.y - _camera.origin.y(), sprite.x - _camera.origin.x());
+    while(spriteDir - _camera.direction > M_PI) spriteDir -= 2*M_PI;
+    while(spriteDir - _camera.direction < - M_PI) spriteDir += 2*M_PI;
+
+    auto dist = sprite.dist < 1 ? 1 : sprite.dist;
+    TSize spriteScreenSize = std::min(static_cast<int>(_width/dist), static_cast<int>(_height/dist));
+    int hOffset = (spriteDir - _camera.direction)*(_width)/(_camera.fov) + (_width)/2 - spriteScreenSize/2;
+    int vOffset = _height/2 - spriteScreenSize/2;
+
+    //#pragma omp parallel for
+    for(TSize i=0;i<spriteScreenSize;++i)
+    {
+        if(hOffset+int(i)<0 || hOffset+i >= _width) continue;
+        if(depthBuffer[hOffset + i]<sprite.dist) continue;
+        for(TSize j=0;j<spriteScreenSize;++j)
+        {
+            if(vOffset+int(j)<0 || vOffset+j>=_height) continue;
+            Color color = texture->get(i,j,spriteScreenSize);
+            if(color.alpha() > 128)
+            {
+                const auto x = hOffset+i;
+                const auto y = vOffset+j;
+                if(y < _height-_guiHeight)
+                    screen.drawPoint({x,y},color);
+            }
+        }
+    }
+}
+
+void RayCarter::drawGUI()
+{
+    auto text = _player.face.lock();
+    auto w = text->w;
+    auto h = text->h;
+    auto scaleMuliplier = 2.5;
+    auto hscale = static_cast<int>(h/scaleMuliplier);
+    auto wscale = static_cast<int>(w/scaleMuliplier);
+    auto xoffset = _width/2 - wscale/2;
+    auto yoffset = _height-_guiHeight;
+    screen.drawTexture(*text, {xoffset, yoffset}, scaleMuliplier, scaleMuliplier);
+
+    auto wtext = _player.weapontext.lock();
+    w = wtext->w;
+    h = wtext->h;
+    auto weaponScale = 0.5;
+    hscale = static_cast<int>(h/weaponScale);
+    wscale = static_cast<int>(w/weaponScale);
+    xoffset = _width/2-wscale/2;
+    yoffset = _height-_guiHeight-hscale+60;
+
+    screen.drawTexture(*wtext, {{xoffset, yoffset}, {_width-1,_height-_guiHeight}}, weaponScale, weaponScale);
+
+    auto fpstext = _font.createText(std::to_string(fps()) + " FPS!");
+    screen.drawTexture(fpstext,{10,10});
 }
 
 void RayCarter::physX()
@@ -183,7 +328,8 @@ void RayCarter::physX()
             if(o == o2) continue;
             auto actor2 = dynamic_cast<Actor*>(o2);
             if(!actor2) continue;
-            if(collisionCheck(*actor, *actor2))
+            //if(collisionCheck(*actor, *actor2))
+            if(intersect(actor->getRect(),actor2->getRect()))
             {
                 actor->collision(actor2);
                 actor2->collision(actor);
@@ -214,6 +360,11 @@ bool RayCarter::collisionCheck(const Actor &rect1, const Actor &rect2)
     return false;
 }
 
+void RayCarter::init()
+{
+
+}
+
 void RayCarter::input()
 {
     keyMap.update();
@@ -232,3 +383,4 @@ void RayCarter::update(TReal lag)
         o->update(lag);
     //_player.update(lag);
 }
+

@@ -29,6 +29,8 @@ struct Player : public Actor
 
     Map &map;
     Camera &camera;
+    PTexture face;
+    PTexture weapontext;
 
     // Actor interface
 public:

@@ -9,40 +9,75 @@ Map::Map(const char *map, TSize width, TSize height, const TString &filename) :
       _textureDB(filename,SDL_PIXELFORMAT_ABGR8888)
 {}
 
-bool intersection(Vector2D origin, Vector2D end, Vector2D apos, Vector2D rectsize)
+bool intersection(Vector2D point, Vector2D apos, Vector2D rectsize)
 {
-    Vector2D hitPoint;
-
     Vector2D p1 = Vector2D(apos.x() - rectsize.x(), apos.y() - rectsize.y());
     Vector2D p2 = Vector2D(apos.x() + rectsize.x(), apos.y() - rectsize.y());
     Vector2D p3 = Vector2D(apos.x() + rectsize.x(), apos.y() + rectsize.y());
     Vector2D p4 = Vector2D(apos.x() - rectsize.x(), apos.y() + rectsize.y());
+//---------- 1
+    Vector2D min = p1;
+    Vector2D max = p1;
+//---------- 2
+    if(p2.x() < min.x())
+        min.x() = p2.x();
+    else if(p2.x() > max.x())
+        max.x() = p2.x();
 
-    Vector2D v1 = Math::normalize(p2-p1);
-    Vector2D v2 = Math::normalize(p3-p2);
-    Vector2D v3 = Math::normalize(p4-p3);
-    Vector2D v4 = Math::normalize(p1-p4);
+    if(p2.y() < min.y())
+        min.y() = p2.y();
+    else if(p2.y() > max.y())
+        max.y() = p2.y();
+//---------- 3
+    if(p3.x() < min.x())
+        min.x() = p3.x();
+    else if(p3.x() > max.x())
+        max.x() = p3.x();
 
+    if(p3.y() < min.y())
+        min.y() = p3.y();
+    else if(p3.y() > max.y())
+        max.y() = p3.y();
+//---------- 4
+    if(p4.x() < min.x())
+        min.x() = p4.x();
+    else if(p4.x() > max.x())
+        max.x() = p4.x();
 
-    return true;
+    if(p4.y() < min.y())
+        min.y() = p4.y();
+    else if(p4.y() > max.y())
+        max.y() = p4.y();
+
+//---------- Check
+
+    if(point.x() > min.x() && point.x() < max.x() &&
+        point.y() > min.y() && point.y() < max.y())
+        return true;
+
+    return false;
 }
 
-class Actor *Map::trace(Vector2D origin, TReal agle, TReal d)
+Actor *Map::trace(Vector2D origin, TReal agle, TReal d, Actor *actorToIgnore=nullptr)
 {
     const auto acos = std::cos(agle);
     const auto asin = std::sin(agle);
 
-    const float cx = origin.x() + d*acos;
-    const float cy = origin.y() + d*asin;
-
-    auto &list = GameObject::getRegister();
-    for(auto &o : list)
+    for(float t = 0; t <= d; t+=.01f)
     {
-        auto actor = dynamic_cast<class Actor*>(o);
+        const float cx = origin.x() + t*acos;
+        const float cy = origin.y() + t*asin;
 
-        if(intersection(origin, {cx,cy}, actor->position(), actor->rectSize))
+        auto &list = GameObject::getRegister();
+        for(auto &o : list)
         {
-            return actor;
+            auto actor = dynamic_cast<class Actor*>(o);
+            if(actor == actorToIgnore) continue;
+
+            if(intersection({cx,cy}, actor->position(), actor->rectSize))
+            {
+                return actor;
+            }
         }
     }
     return nullptr;
