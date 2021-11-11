@@ -33,60 +33,43 @@ using TActor2ActorAction = std::function<void (Actor *, Actor *)>;
  *          |<--------------------Size * ActorInfo----------------->|
 */
 
-
-
-class NetworkActor : public Actor
+struct PlayerDescription
 {
-public:
-    NetworkActor(uint32_t ID) :
-        Actor(),
-          _id(ID)
-    {}
+    uint32_t uniqueID = 0;
+    uint32_t avatarID = 0;
 
-    uint32_t id() const {return _id;}
+    float radius = 0.5f;
 
-private:
-    uint32_t _id; //id of connection
+    Vector2D pos;
+    char walk;
 };
 
 
 enum class CustomMsgTypes : uint32_t
 {
-    ServerAccept,
-    ServerDeny,
+    ServerStatus,
     ServerPing,
-    MessageAll,
-    ServerMessage
+
+    ClientAccepted,
+    ClientAssignID,
+    ClientRegister,
+    ClientUnregister,
+
+    GameAddPlayer,
+    GameRemovePlayer,
+    GameUpdatePlayer,
 };
 
-class CustomServer : public Server<CustomMsgTypes>
-{
-public:
-    CustomServer(uint16_t nPort);
 
-protected:
-    bool onClientConnect(std::shared_ptr<Connection<CustomMsgTypes>> client) override;
-    void onClientDisconnect(std::shared_ptr<Connection<CustomMsgTypes>> client) override;
-    void onMessage(std::shared_ptr<Connection<CustomMsgTypes>> client, Message<CustomMsgTypes> &msg) override;
-};
-
-class CustomClient : public Client<CustomMsgTypes>
-{
-public:
-    void pingServer();
-    void messageAll();
-};
 
 class RayCarter : public Window, public GameLoop
 {
 public:
     RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit = 60.f, Window *parent = nullptr);
-    ~RayCarter() override {}
+    ~RayCarter() override;
 
-    Map &map() {return _map;}
+    Map &map();
     Player _player;
-    NTexture testText;
-
 
 private:
     Screen &screen;
@@ -107,11 +90,10 @@ private:
 private:
     void draw() override;
     void drawSprite(const Sprite &sprite, const TArray<float> &depthBuffer);
-    void drawSprite(const NSprite &sprite, const TArray<float> &depthBuffer);
     void drawGUI();
     void physX();
 
-    static bool collisionCheck(const Actor &rect1, const Actor &rect2);
+    static int wall2texcoord(float hx, float hy, int tw);
 
     // GameLoop interface
 protected:

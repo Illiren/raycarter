@@ -10,19 +10,20 @@ public:
     Actor();
     ~Actor() override;
 
-    void setPos(const Vector2D &v);
+    virtual void setPos(const Vector2D &v);
+    virtual void setDirection(TReal dir);
     virtual Vector2D position() const;
-    Drawable *drawable;
-    Map *map;
-    Vector2D rectSize;
-
-    Rectangle2D<TReal> getRect() const;
-
+    virtual TReal direction() const;
     virtual void collision(Actor *another);
     virtual void interract(Actor *causer);
+    FRectangle2D getCollisionRect() const;
+
+    std::shared_ptr<Drawable> drawable;
+    Vector2D rectSize;
+    Map *map;
+    uint32_t id;
 
 
-    //void
     // GameObject interface
 public:
     void update(TReal dt) override;

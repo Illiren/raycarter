@@ -223,7 +223,7 @@ void Screen::drawPoint(const Point2D &p, Color color)
     (*_framebuffer)[pointToIndex(p)] = color;
 }
 
-void Screen::drawTexture(const NTexture &text, Point2D p, TReal hs, TReal ws)
+void Screen::drawTexture(const Texture &text, Point2D p, TReal hs, TReal ws)
 {
     auto w = text.w;
     auto h = text.h;
@@ -246,7 +246,7 @@ void Screen::drawTexture(const NTexture &text, Point2D p, TReal hs, TReal ws)
         }
 }
 
-void Screen::drawTexture(const NTexture &text, Rectangle2D<TSize> p, TReal hs, TReal ws)
+void Screen::drawTexture(const Texture &text, Rectangle2D<TSize> p, TReal hs, TReal ws)
 {
     const auto w = text.w;
     const auto h = text.h;

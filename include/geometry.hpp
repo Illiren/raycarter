@@ -154,3 +154,6 @@ inline constexpr bool intersect(const Circle<T,Dim> &c, const Ray<T,Dim> &l) noe
     return false;
 }
 
+using FRectangle2D = Rectangle2D<TReal>;
+using FRay2D = Ray2D<TReal>;
+

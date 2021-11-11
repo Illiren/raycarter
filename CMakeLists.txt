@@ -37,6 +37,14 @@ file(GLOB_RECURSE SOURCES
     "${SRC_DIR}/main.cpp"
     "${SRC_DIR}/source/*.cpp")
 
+file(GLOB_RECURSE SERVER
+    "${SRC_DIR}/source/*.cpp"
+    "${SRC_DIR}/server.cpp")
+
+file(GLOB_RECURSE CLIENT
+    "${SRC_DIR}/source/*.cpp"
+    "${SRC_DIR}/client.cpp")
+
 add_custom_target(headers SOURCES ${LibFiles})
 add_custom_target(sources SOURCES ${SrcFiles})
 
@@ -49,8 +57,21 @@ file(COPY resources/player.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/weapon.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/test.wav DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/smallfont.bmp DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY resources/dwarf.bmp DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY resources/orc.bmp DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY resources/troll.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PRIVATE "${SRC_DIR}")
 target_link_libraries(${PROJECT_NAME} openal)
+
+add_executable(${PROJECT_NAME}_server ${SERVER})
+target_link_libraries(${PROJECT_NAME}_server  ${SDL2_LIBRARIES})
+target_include_directories(${PROJECT_NAME}_server PRIVATE "${SRC_DIR}")
+target_link_libraries(${PROJECT_NAME}_server openal)
+
+add_executable(${PROJECT_NAME}_client ${CLIENT})
+target_link_libraries(${PROJECT_NAME}_client  ${SDL2_LIBRARIES})
+target_include_directories(${PROJECT_NAME}_client PRIVATE "${SRC_DIR}")
+target_link_libraries(${PROJECT_NAME}_client openal)

@@ -175,6 +175,10 @@ struct OwnedMessage
 
 
 template<typename T>
+class Server;
+
+
+template<typename T>
 class Connection : public std::enable_shared_from_this<Connection<T>>
 {
 public:
@@ -190,7 +194,18 @@ public:
           _asioContext(contect),
           _socket(std::move(socket)),
           _qMessageIn(qIn)
-    {}
+    {
+        if(_owner == Owner::Server)
+        {
+            _handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
+            _handshakeCheck = scramble(_handshakeOut);
+        }
+        else
+        {
+            _handshakeIn = 0;
+            _handshakeOut = 0;
+        }
+    }
 
     virtual ~Connection()
     {}
@@ -200,14 +215,15 @@ public:
         return _id;
     }
 
-    void connectToClient(uint32_t uid = 0)
+    void connectToClient(Server<T> *server, uint32_t uid = 0)
     {
         if(_owner == Owner::Server)
         {
             if(_socket.is_open())
             {
                 _id = uid;
-                readHeader();
+                writeValidation();
+                readValidation(server);
             }
         }
     }
@@ -221,7 +237,11 @@ public:
                                 {
                                     if(!ec)
                                     {
-                                        readHeader();
+                                        readValidation();
+                                    }
+                                    else
+                                    {
+                                        std::cout << ec.message() << "\n";
                                     }
                                 });
         }
@@ -243,7 +263,7 @@ public:
         asio::post(_asioContext,
                    [this, msg]()
                    {
-                       bool bWritingMessage = _qMessageOut.empty();
+                       bool bWritingMessage = !_qMessageOut.empty();
                        _qMessageOut.push_back(msg);
                        if(!bWritingMessage)
                        {
@@ -277,7 +297,7 @@ private:
                               }
                               else
                               {
-                                  std::cout << "[" << _id << "] Write Header Fail.\n";
+                                  std::cout << "[" << _id << "] " << ec.message() << " Write Header Fail\n";
                                   _socket.close();
                               }
                           });
@@ -296,7 +316,7 @@ private:
                               }
                               else
                               {
-                                  std::cout << "[" << _id << "] Write Body Fail.\n";
+                                  std::cout << "[" << _id << "] " << ec.message() << " Write Body Fail\n";
                                   _socket.close();
                               }
                           });
@@ -321,7 +341,7 @@ private:
                              }
                              else
                              {
-                                 std::cout << "[" << _id << "] Read Header Fail\n";
+                                 std::cout << "[" << _id << "] " << ec.message() << " Read Header Fail\n";
                                  _socket.close();
                              }
                          });
@@ -338,7 +358,7 @@ private:
                              }
                              else
                              {
-                                 std::cout << "[" << _id << "] Read Body Fail\n";
+                                 std::cout << "[" << _id << "] " << ec.message() << " Read Body Fail\n";
                                  _socket.close();
                              }
                          });
@@ -353,6 +373,63 @@ private:
         readHeader();
     }
 
+    static uint64_t scramble(uint64_t in)
+    {
+        uint64_t out = in ^ 0xDEADBEEFC0DECAFE;
+        out = (out & 0xF0F0F0F0F0F0F0) >> 4 | (out & 0x0F0F0F0F0F0F0F) << 4;
+        return out ^ 0xC0DEFACE12345678;
+    }
+
+    void writeValidation()
+    {
+        asio::async_write(_socket,asio::buffer(&_handshakeOut,sizeof(uint64_t)),
+                          [this](std::error_code ec, std::size_t length)
+                          {
+                              if(!ec)
+                              {
+                                  if(_owner == Owner::Client)
+                                      readHeader();
+                              }
+                              else
+                                  _socket.close();
+                          });
+    }
+
+    void readValidation(Server<T> *server = nullptr)
+    {
+        asio::async_read(_socket,asio::buffer(&_handshakeIn,sizeof(uint64_t)),
+                         [this, server](std::error_code ec, std::size_t length)
+                         {
+                             if(!ec)
+                             {
+                                 if(_owner == Owner::Server)
+                                 {
+                                     if(_handshakeIn == _handshakeCheck)
+                                     {
+                                         std::cout << "Client Validated" << std::endl;
+                                         server->onClientValidated(this->shared_from_this());
+
+                                         readHeader();
+                                     }
+                                     else
+                                     {
+                                         std::cout << "Client Disconnected (Fail Validation)" << std::endl;
+                                         _socket.close();
+                                     }
+                                 }
+                                 else
+                                 {
+                                     _handshakeOut = scramble(_handshakeIn);
+                                     writeValidation();
+                                 }
+                             }
+                             else
+                             {
+                                 std::cout << "Client Disconnected (Read Validation)" << std::endl;
+                                 _socket.close();
+                             }
+                         });
+    }
 
 protected:
     Owner _owner;
@@ -362,6 +439,12 @@ protected:
     Message<T> _msgTemporaryIn;
     asio::ip::tcp::socket _socket;
     uint32_t _id = 0;
+
+    uint64_t _handshakeOut = 0;
+    uint64_t _handshakeIn = 0;
+    uint64_t _handshakeCheck = 0;
+    bool _validHandshake = false;
+    bool _connectionEstablished = false;
 };
 
 
@@ -442,7 +525,7 @@ public:
           _asioAcceptor(_asioContext,asio::ip::tcp::endpoint(asio::ip::tcp::v4(),port))
     {}
 
-    ~Server()
+    virtual ~Server()
     {
         stop();
     }
@@ -480,13 +563,18 @@ public:
                 {
                     std::cout << "[SERVER] New Connection: " << socket.remote_endpoint() << "\n";
 
-                    std::shared_ptr<Connection<T>> newconn = std::make_shared<Connection<T>>(Connection<T>::Owner::Server, _asioContext, std::move(socket), _messagesIn);
+                    std::shared_ptr<Connection<T>> newconn = std::make_shared<Connection<T>>(
+                        Connection<T>::Owner::Server,
+                        _asioContext,
+                        std::move(socket),
+                        _messagesIn
+                        );
 
                     if(onClientConnect(newconn))
                     {
                         _connections.push_back(std::move(newconn));
 
-                        _connections.back()->connectToClient(_idCounter++);
+                        _connections.back()->connectToClient(this,_idCounter++);
                         std::cout << "[" << _connections.back()->getID() << "] Connection Approved\n";
                     }
                     else
@@ -561,6 +649,9 @@ protected:
     virtual bool onClientConnect(std::shared_ptr<Connection<T>> client) {return false;}
     virtual void onClientDisconnect(std::shared_ptr<Connection<T>> client) {}
     virtual void onMessage(std::shared_ptr<Connection<T>> client, Message<T> &msg) {}
+
+public:
+    virtual void onClientValidated(std::shared_ptr<Connection<T>> client) {}
 
 
 private:

@@ -7,13 +7,10 @@ class Color
 {
 
 public:
-    Color() noexcept
-    {}
-
+    constexpr Color() noexcept {}
     constexpr Color(TUint32 rawColor) noexcept :
         _rawData(rawColor)
     {}
-
     constexpr Color(TUInt8 r, TUInt8 g, TUInt8 b, TUInt8 a=255) noexcept :
         _red(r),
         _green(g),
@@ -27,10 +24,10 @@ public:
 
     //TODO: Move operations
 
-    auto red() const {return _red;}
-    auto green() const {return _green;}
-    auto blue() const {return _blue;}
-    auto alpha() const {return _alpha;}
+    auto red() const noexcept {return _red;}
+    auto green() const noexcept {return _green;}
+    auto blue() const noexcept {return _blue;}
+    auto alpha() const noexcept {return _alpha;}
 
     inline operator TUint32() const noexcept {return _rawData;}
 

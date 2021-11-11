@@ -50,8 +50,8 @@ public:
     void drawLine(Point2D start, Point2D end, Color color);
     void drawTriangle(Point2D t0, Point2D t1, Point2D t2, Color color);
     void drawPoint(const Point2D &p, Color color);
-    void drawTexture(const NTexture &text, Point2D p, TReal hscale = 1.f, TReal wscale = 1.f);
-    void drawTexture(const NTexture &text, Rectangle2D<TSize> p, TReal hscale = 1.f, TReal wscale = 1.f);
+    void drawTexture(const Texture &text, Point2D p, TReal hscale = 1.f, TReal wscale = 1.f);
+    void drawTexture(const Texture &text, Rectangle2D<TSize> p, TReal hscale = 1.f, TReal wscale = 1.f);
 
 
     auto rawData() {return _framebuffer->data();}
@@ -71,14 +71,14 @@ protected:
         //clear();
     }
 
-    inline TSize pointToIndex(const Point2D &p)
+    inline TSize pointToIndex(const Point2D &p) const noexcept
     {
         const auto index = p.x() + (p.y())*_width;
         assert(index<_framebuffer->size() && "Out of range");
         return index;
     }
 
-    inline void inc(Point2D &p)
+    inline void inc(Point2D &p) const noexcept
     {
         if(p.x() + 1 == _width)
         {

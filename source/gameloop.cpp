@@ -28,7 +28,7 @@ void GameLoop::run()
 
         {
             auto start = chrono::steady_clock::now();
-            input();
+            this->input();
             auto end = chrono::steady_clock::now();
             auto diff = end - start;
             //cout << "Input time: " << chrono::duration<float, milli>(diff).count() << " ms" << endl;
@@ -45,7 +45,7 @@ void GameLoop::run()
             }*/
 
             if(_state != Pause)
-                update(lag);
+                this->update(lag);
 
             auto end = chrono::steady_clock::now();
             auto diff = end - start;
@@ -54,7 +54,7 @@ void GameLoop::run()
 
         {
             auto start = chrono::steady_clock::now();
-            render();
+            this->render();
             auto end = chrono::steady_clock::now();
             auto diff = end - start;
             //cout << "Render time: " << chrono::duration<float, milli>(diff).count() << " ms" << endl;
@@ -84,8 +84,13 @@ void GameLoop::run()
 
 GameLoop::GameLoop(TReal fpsLimit) :
     _state(Idle),
-    _fpsLimit(fpsLimit)
+      _fpsLimit(fpsLimit)
 {}
+
+GameLoop::~GameLoop()
+{
+    //_loopthread.join();
+}
 
 void GameLoop::start()
 {
@@ -94,8 +99,7 @@ void GameLoop::start()
     _state = Running;
     init();
     run();
-
-    //_loopthread = std::thread(&GameLoop::run, this);
+    //_loopthread = std::thread([this]() {this->run();});
     //_loopthread.join();
 }
 
@@ -111,4 +115,14 @@ void GameLoop::stop()
 {
     _state = Idle;
 
+}
+
+int GameLoop::fps() const noexcept
+{
+    return _fps;
+}
+
+TReal GameLoop::msPerUpdate() const noexcept
+{
+    return TReal(1)/_fpsLimit;
 }

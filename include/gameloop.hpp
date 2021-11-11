@@ -17,11 +17,12 @@ public:
 
 public:
     GameLoop(TReal fpsimit = 60.f);
+    virtual ~GameLoop();
 
     void start();
     void pause();
     void stop();
-    inline int fps() const {return _fps;}
+    int fps() const noexcept;
 
 private:
     State _state;
@@ -29,7 +30,7 @@ private:
     std::thread _loopthread;
     int _fps;
 
-    inline auto msPerUpdate() const { return TReal(1)/_fpsLimit;}
+    TReal msPerUpdate() const noexcept;
     void run();
 
 

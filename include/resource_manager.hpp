@@ -9,12 +9,6 @@
 #include <condition_variable>
 
 
-template<typename KeyType>
-struct NameGenerator
-{
-
-
-};
 
 template<typename KeyType, typename Type>
 class ResourceManagerBase

@@ -47,37 +47,10 @@ private:
     TString getName(TString baseName) const;
 };
 
-
-class Audio
-{
-public:
-    Audio();
-    ~Audio();
-
-    bool play();
-    bool play(PSound wav, bool repeatable = false);
-    void load(TString filename);
-    static TArray<TString> getAvailableDevices(ALCdevice *device);
-
-private:
-    uint8_t         channel;
-    int32_t         sampleRate;
-    uint8_t         bitPerSample;
-    ALsizei         size;
-    TArray<char>    data;
-
-    ALCdevice *openALDevice;
-    ALCcontext *openALContext;
-    ALCboolean contextMadeCurrent;
-};
-
-
 struct SoundSequence
 {
     SoundSequence() = default;
-    SoundSequence(PSound s) :
-          sound(s)
-    {}
+    SoundSequence(PSound s);
 
     void play();
     bool isPlayed() const;
@@ -85,11 +58,11 @@ struct SoundSequence
 
 private:
     std::weak_ptr<bool> playstate;
-    friend class NAudio;
+    friend class Audio;
 };
 
 
-class NAudio
+class Audio
 {
     using Thread = std::thread;
     using TMutex = std::mutex;
@@ -99,12 +72,12 @@ class NAudio
     using TQueue = std::queue<T>;
 
 public:
-    friend NAudio &GetAudio();
+    friend Audio &GetAudio();
 
     std::weak_ptr<bool> play(PSound wav, bool repeatable = false);
     static TArray<TString> getAvailableDevices(ALCdevice *device);
 
-    ~NAudio();
+    ~Audio();
 private:
     ALCdevice  *openALDevice;
     ALCcontext *openALContext;
@@ -119,7 +92,7 @@ private:
     inline void enqueue(const Task &f);
     inline void enqueue(Task &&f);
 
-    NAudio();
+    Audio();
 };
 
-NAudio &GetAudio();
+Audio &GetAudio();

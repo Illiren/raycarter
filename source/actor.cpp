@@ -16,6 +16,11 @@ void Actor::setPos(const Vector2D &v)
     }
 }
 
+void Actor::setDirection(TReal dir)
+{
+
+}
+
 Vector2D Actor::position() const
 {
     if(drawable)
@@ -26,7 +31,12 @@ Vector2D Actor::position() const
     return {-1.f,-1.f};
 }
 
-Rectangle2D<TReal> Actor::getRect() const
+TReal Actor::direction() const
+{
+    return 1;
+}
+
+FRectangle2D Actor::getCollisionRect() const
 {
     Rectangle2D<TReal> rect;
     rect.topleft.x() = position().x() - rectSize.x();
@@ -47,6 +57,6 @@ void Actor::interract(Actor *causer)
 
 void Actor::update(TReal dt)
 {
-    auto pos = position();
+
 
 }

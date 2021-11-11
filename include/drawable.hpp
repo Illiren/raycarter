@@ -11,15 +11,15 @@ public:
     Drawable();
     Drawable(TReal x, TReal y);
     virtual ~Drawable();
-
     virtual void update() = 0;
 
-    static const std::list<Drawable*> &getRegister() {return _drawableRegister;}
+    static const std::list<Drawable*> &getRegister();
 
     void updateDist(TReal x, TReal y);
 
     TReal dist;
     TReal x,y;
+
 private:
     static std::list<Drawable*> _drawableRegister;
 };
@@ -27,25 +27,11 @@ private:
 
 struct Sprite : public Drawable
 {
-    Sprite(TString fileName, TReal posx, TReal posy, TSize texid = 0);
+    Sprite(PTexture texture, Vector2D pos);
     ~Sprite() override;
 
     void update() override;
-    uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
-
     bool operator<(const Sprite &s) const;
-
-    TSize texid;
-    Texture tex;
-};
-
-struct NSprite : public Drawable
-{
-    NSprite(PTexture texture, Vector2D pos);
-    ~NSprite() override;
-
-    void update() override;
-    bool operator<(const NSprite &s) const;
     uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
 
     PTexture tex;

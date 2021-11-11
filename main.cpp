@@ -7,22 +7,6 @@
 
 using namespace std;
 
-const char RayCarter::mapdata[] =   "0000000000000000"\
-                                    "0              0"\
-                                    "0     444      0"\
-                                    "0     4        0"\
-                                    "0     4        0"\
-                                    "0     3        0"\
-                                    "0   44444      0"\
-                                    "0   4   2      0"\
-                                    "0   4   2      0"\
-                                    "0   4   2      0"\
-                                    "0       2      0"\
-                                    "05555   2      0"\
-                                    "0       2      0"\
-                                    "0    2222      0"\
-                                    "0              0"\
-                                    "0000000000000000";
 
 struct Drake : public Actor
 {
@@ -65,34 +49,36 @@ int main()
     const size_t winW = 768;
     const size_t winH = 768;
 
-    NTextureDB test;
+    TextureDB test;
     test.load("monsters.bmp",4,"monster");
     test.load("walltext.bmp",6,"wall");
     test.load("player.bmp", "player");
     test.load("weapon.bmp", "weapon");
-    test.loadFont("smallfont.bmp");
+    test.load("dwarf.bmp", "dwarf");
+    test.load("orc.bmp", "orc");
+    test.load("troll.bmp", "troll");
     autiodb.load("test.wav", "drakesay1");
     auto sound = autiodb["drakesay1"];
 
-    Sprite e1("monsters.bmp", 3.523, 3.812, 2);
     Drake a1(sound);
-    a1.drawable = &e1;
+    a1.drawable.reset(new Sprite(test["monster2"], {3.523, 3.812}));
 
-    Sprite e2("monsters.bmp", 3.523, 13.812, 1);
     Actor a2;
-    a2.drawable = &e2;
+    a2.drawable.reset(new Sprite(test["orc"], {3.523, 13.812}));
 
-    Sprite e3("monsters.bmp", 12.0, 12.0, 0);
     Actor a3;
-    a3.drawable = &e3;
+    a3.drawable.reset(new Sprite(test["troll"], {12.0, 12.0}));
 
-    NSprite n1(test["monster2"],{6.42, 10.5});
     Actor a4;
-    a4.drawable = &n1;
+    a4.drawable.reset(new Sprite(test["monster3"],{6.42, 10.5}));
 
     RayCarter game({{0,0},{winW,winH}});
     game._player.face = test["player"];
     game._player.weapontext = test["weapon"];
+
+    for(TSize i=0;i<6;++i)
+        game.map().addTexture(test["wall"+std::to_string(i)]);
+
 
     GetInputManager()[SDLK_ESCAPE].keydownEvent = [&game,&debug](){debug = false; game.stop();};
     GetInputManager()['p'].keydownEvent = [&game,&debug](){game.pause();};
@@ -103,7 +89,7 @@ int main()
     while(debug)
     {
         //GetScreen().clear();
-        GetScreen().update();
+        //GetScreen().update();
         this_thread::sleep_for(1s);
     }
 /*

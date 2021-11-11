@@ -15,9 +15,7 @@ struct Stun
 
 Network::Network() :
       vBuffer(20*1024)
-{
-
-}
+{}
 
 bool Network::open(const asio::ip::address &addr, int &port)
 {

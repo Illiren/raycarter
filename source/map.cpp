@@ -1,62 +1,12 @@
 #include "map.hpp"
 #include "actor.hpp"
+#include "geometry.hpp"
 
-
-Map::Map(const char *map, TSize width, TSize height, const TString &filename) :
+Map::Map(const char *map, TSize width, TSize height) :
       mapRef(map),
       _width(width),
-      _height(height),
-      _textureDB(filename,SDL_PIXELFORMAT_ABGR8888)
+      _height(height)
 {}
-
-bool intersection(Vector2D point, Vector2D apos, Vector2D rectsize)
-{
-    Vector2D p1 = Vector2D(apos.x() - rectsize.x(), apos.y() - rectsize.y());
-    Vector2D p2 = Vector2D(apos.x() + rectsize.x(), apos.y() - rectsize.y());
-    Vector2D p3 = Vector2D(apos.x() + rectsize.x(), apos.y() + rectsize.y());
-    Vector2D p4 = Vector2D(apos.x() - rectsize.x(), apos.y() + rectsize.y());
-//---------- 1
-    Vector2D min = p1;
-    Vector2D max = p1;
-//---------- 2
-    if(p2.x() < min.x())
-        min.x() = p2.x();
-    else if(p2.x() > max.x())
-        max.x() = p2.x();
-
-    if(p2.y() < min.y())
-        min.y() = p2.y();
-    else if(p2.y() > max.y())
-        max.y() = p2.y();
-//---------- 3
-    if(p3.x() < min.x())
-        min.x() = p3.x();
-    else if(p3.x() > max.x())
-        max.x() = p3.x();
-
-    if(p3.y() < min.y())
-        min.y() = p3.y();
-    else if(p3.y() > max.y())
-        max.y() = p3.y();
-//---------- 4
-    if(p4.x() < min.x())
-        min.x() = p4.x();
-    else if(p4.x() > max.x())
-        max.x() = p4.x();
-
-    if(p4.y() < min.y())
-        min.y() = p4.y();
-    else if(p4.y() > max.y())
-        max.y() = p4.y();
-
-//---------- Check
-
-    if(point.x() > min.x() && point.x() < max.x() &&
-        point.y() > min.y() && point.y() < max.y())
-        return true;
-
-    return false;
-}
 
 Actor *Map::trace(Vector2D origin, TReal agle, TReal d, Actor *actorToIgnore=nullptr)
 {
@@ -74,7 +24,7 @@ Actor *Map::trace(Vector2D origin, TReal agle, TReal d, Actor *actorToIgnore=nul
             auto actor = dynamic_cast<class Actor*>(o);
             if(actor == actorToIgnore) continue;
 
-            if(intersection({cx,cy}, actor->position(), actor->rectSize))
+            if(intersect({cx,cy}, actor->getCollisionRect()))
             {
                 return actor;
             }
@@ -93,28 +43,15 @@ const char &Map::operator [](TSize pos) const
     return mapRef[pos];
 }
 
-char Map::operator[](TSize pos)
+const Texture &Map::getTexture(TSize texId) const
 {
-    assert(mapRef != nullptr);
-    return mapRef[pos];
+    return n_textureDB[texId];
 }
 
 
-TArray<uint32_t> Map::getTexture(TSize texId, TSize texCoord, TSize height) const
+void Map::addTexture(PTexture txt)
 {
-    return _textureDB.getScaledColumn(texId,texCoord,height);
-}
-
-int Map::wall2texcoord(float hx, float hy) const
-{
-    float x = hx - floor(hx+.5);
-    float y = hy - floor(hy+.5);
-
-    int tex = x * _textureDB.size;
-    if(abs(y) > abs(x))
-        tex = y*_textureDB.size;
-    if(tex < 0)
-        tex+=_textureDB.size;
-    return tex;
+    auto t = txt.lock();
+    n_textureDB.push_back(*t);
 }
 

@@ -308,157 +308,6 @@ Wav::operator bool() const noexcept
     return !data.empty();
 }
 
-Audio::Audio()
-{
-    openALDevice = alcOpenDevice(nullptr);
-    if(!openALDevice)
-        return;
-
-    if(!alcCall(alcCreateContext,openALContext,openALDevice,openALDevice, nullptr) || !openALContext)
-    {
-        return;
-    }
-
-    contextMadeCurrent = false;
-    if(!alcCall(alcMakeContextCurrent,contextMadeCurrent,openALDevice,openALContext) || contextMadeCurrent != ALC_TRUE)
-    {
-        return;
-    }
-}
-
-Audio::~Audio()
-{
-    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, nullptr);
-    alcCall(alcDestroyContext,openALDevice, openALContext);
-    ALCboolean closed;
-    alcCall(alcCloseDevice, closed, openALDevice, openALDevice);
-}
-
-bool Audio::play()
-{
-    ALuint buffer;
-    alCall(alGenBuffers,1,&buffer);
-    ALenum format;
-    if(channel == 1 && bitPerSample == 8)
-        format = AL_FORMAT_MONO8;
-    else if(channel == 1 && bitPerSample == 16)
-        format = AL_FORMAT_MONO16;
-    else if(channel == 2 && bitPerSample == 8)
-        format = AL_FORMAT_STEREO8;
-    else if(channel == 2 && bitPerSample == 16)
-        format = AL_FORMAT_STEREO16;
-    else
-    {
-        //Error
-        return false;
-    }
-    alCall(alBufferData, buffer, format, data.data(), data.size(), sampleRate);
-
-    ALuint source;
-    alCall(alGenSources,1,&source);
-    alCall(alSourcef, source, AL_PITCH, 1);
-    alCall(alSource3f, source, AL_POSITION, 0,0,0);
-    alCall(alSource3f, source, AL_VELOCITY, 0,0,0);
-    alCall(alSourcei, source, AL_LOOPING, AL_FALSE);
-    alCall(alSourcei, source, AL_BUFFER, buffer);
-    alCall(alSourcePlay, source);
-
-    ALint state = AL_PLAYING;
-
-    while(state == AL_PLAYING)
-    {
-        alCall(alGetSourcei, source, AL_SOURCE_STATE, &state);
-    }
-
-    alCall(alDeleteSources,1,&source);
-    alCall(alDeleteBuffers,1,&buffer);
-    return true;
-}
-
-bool Audio::play(PSound wav, bool repeatable)
-{
-    auto sound = wav.lock();
-    ALuint buffer;
-    alCall(alGenBuffers,1,&buffer);
-    ALenum format;
-
-    const auto channel = sound->channel;
-    const auto bitPerSample = sound->bitPerSample;
-    const auto data = sound->data.data();
-    const auto size = sound->data.size();
-    const auto sampleRate = sound->sampleRate;
-
-    if(channel == 1 && bitPerSample == 8)
-        format = AL_FORMAT_MONO8;
-    else if(channel == 1 && bitPerSample == 16)
-        format = AL_FORMAT_MONO16;
-    else if(channel == 2 && bitPerSample == 8)
-        format = AL_FORMAT_STEREO8;
-    else if(channel == 2 && bitPerSample == 16)
-        format = AL_FORMAT_STEREO16;
-    else
-    {
-        //Error
-        return false;
-    }
-    alCall(alBufferData, buffer, format, data, size, sampleRate);
-
-    ALuint source;
-    alCall(alGenSources,1,&source);
-    alCall(alSourcef,source,AL_PITCH,1);
-    alCall(alSource3f,source,AL_POSITION,0,0,0);
-    alCall(alSource3f,source,AL_VELOCITY,0,0,0);
-    alCall(alSourcei,source,AL_LOOPING,repeatable);
-    alCall(alSourcei,source,AL_BUFFER,buffer);
-    alCall(alSourcePlay,source);
-
-    ALint state = AL_PLAYING;
-    while(state == AL_PLAYING)
-    {
-        alCall(alGetSourcei,source,AL_SOURCE_STATE,&state);
-    }
-
-    alCall(alDeleteSources,1,&source);
-    alCall(alDeleteBuffers,1,&buffer);
-    return true;
-}
-
-TArray<TString> Audio::getAvailableDevices(ALCdevice *device)
-{
-    const ALCchar * devices;
-    TArray<TString> devicesVec;
-
-    if(!alcCall(alcGetString,devices,device, nullptr, ALC_DEVICE_SPECIFIER))
-        return devicesVec;
-
-    const char *ptr = devices;
-
-    do
-    {
-        devicesVec.push_back(TString(ptr));
-        ptr +=  devicesVec.back().size() + 1;
-    }
-    while(*(ptr+1) != '\0');
-
-    return devicesVec;
-}
-
-void Audio::load(TString filename)
-{
-    std::ifstream in(filename, std::ios::binary);
-
-    if(!loadWAV(in,channel,sampleRate,bitPerSample,size))
-    {
-        std::cout << "Could not load wav header of " << filename << std::endl;
-        return;
-    }
-
-    data.resize(size);
-    in.read(data.data(),size);
-}
-
-
-
 AudioDB::AudioDB()
 {}
 
@@ -505,7 +354,7 @@ TString AudioDB::getName(TString baseName) const
 }
 
 
-std::weak_ptr<bool> NAudio::play(PSound wav, bool repeatable)
+std::weak_ptr<bool> Audio::play(PSound wav, bool repeatable)
 {
     std::shared_ptr<bool> sharedBool(new bool);
 
@@ -562,7 +411,7 @@ std::weak_ptr<bool> NAudio::play(PSound wav, bool repeatable)
     return sharedBool;
 }
 
-void NAudio::enqueue(const Task &f)
+void Audio::enqueue(const Task &f)
 {
     {
         std::unique_lock<TMutex> lock(_queueMutex);
@@ -573,7 +422,7 @@ void NAudio::enqueue(const Task &f)
     _cond.notify_one();
 }
 
-void NAudio::enqueue(Task &&f)
+void Audio::enqueue(Task &&f)
 {
     {
         std::unique_lock<TMutex> lock(_queueMutex);
@@ -584,7 +433,7 @@ void NAudio::enqueue(Task &&f)
     _cond.notify_one();
 }
 
-NAudio::NAudio()
+Audio::Audio()
 {
     openALDevice = alcOpenDevice(nullptr);
     if(!openALDevice)
@@ -633,7 +482,7 @@ NAudio::NAudio()
     }
 }
 
-NAudio::~NAudio()
+Audio::~Audio()
 {
     {
         std::unique_lock<TMutex> lock(_queueMutex);
@@ -651,12 +500,15 @@ NAudio::~NAudio()
     alcCall(alcCloseDevice, closed, openALDevice, openALDevice);
 }
 
-NAudio &GetAudio()
+Audio &GetAudio()
 {
-    static NAudio audio;
+    static Audio audio;
     return audio;
 }
-#undef alCall
+
+SoundSequence::SoundSequence(PSound s) :
+      sound(s)
+{}
 
 void SoundSequence::play()
 {
@@ -677,3 +529,13 @@ void SoundSequence::play()
 }
 
 bool SoundSequence::isPlayed() const {return !playstate.expired();}
+
+
+
+
+
+
+
+
+
+#undef alCall

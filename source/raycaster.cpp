@@ -3,63 +3,23 @@
 #include <iostream>
 
 
-CustomServer::CustomServer(uint16_t nPort) :
-      Server<CustomMsgTypes>(nPort)
-{}
-
-bool CustomServer::onClientConnect(std::shared_ptr<Connection<CustomMsgTypes> > client)
-{
-    Message<CustomMsgTypes> msg;
-    msg.header.id = CustomMsgTypes::ServerAccept;
-    client->send(msg);
-    return true;
-}
-
-void CustomServer::onClientDisconnect(std::shared_ptr<Connection<CustomMsgTypes> > client)
-{
-    std::cout << "Removing client [" << client->getID() << "]\n";
-}
-
-void CustomServer::onMessage(std::shared_ptr<Connection<CustomMsgTypes>> client, Message<CustomMsgTypes> &msg)
-{
-    switch(msg.header.id)
-    {
-    case CustomMsgTypes::ServerPing:
-    {
-        std::cout << "[" << client->getID() << "]: Server Ping\n";
-        client->send(msg);
-    }
-    break;
-    case CustomMsgTypes::MessageAll:
-    {
-        std::cout << "[" << client->getID() << "]: Message All\n";
-        Message<CustomMsgTypes> msg;
-        msg.header.id = CustomMsgTypes::ServerMessage;
-        msg << client->getID();
-        messageAllClients(msg, client);
-    }
-    break;
-    default:
-        break;
-    }
-}
-
-void CustomClient::pingServer()
-{
-    Message<CustomMsgTypes> msg;
-    msg.header.id = CustomMsgTypes::ServerPing;
-
-    std::chrono::system_clock::time_point timeNow = std::chrono::system_clock::now();
-    msg << timeNow;
-    send(msg);
-}
-
-void CustomClient::messageAll()
-{
-    Message<CustomMsgTypes> msg;
-    msg.header.id = CustomMsgTypes::MessageAll;
-    send(msg);
-}
+const char RayCarter::mapdata[] =
+    "0000000000000000"\
+    "0              0"\
+    "0     444      0"\
+    "0     4        0"\
+    "0     4        0"\
+    "0     3        0"\
+    "0   44444      0"\
+    "0   4   2      0"\
+    "0   4   2      0"\
+    "0   4   2      0"\
+    "0       2      0"\
+    "05555   2      0"\
+    "0       2      0"\
+    "0    2222      0"\
+    "0              0"\
+    "0000000000000000";
 
 
 
@@ -68,7 +28,7 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit, Window *parent)
       GameLoop(fpsLimit),
       screen(GetScreen()),
       keyMap(GetInputManager()),
-      _map(mapdata,mapW,mapH,"walltext.bmp"),
+      _map(mapdata,mapW,mapH),
       _player(_camera,_map),
       _mapOrigin({0,0}),
       _mapSize({100,100}),
@@ -82,7 +42,7 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit, Window *parent)
         return;
     }
 
-    _camera.direction = 3.f*static_cast<float>(M_PI)/2.f;
+    _camera.direction = 4.5f*static_cast<float>(M_PI);
     _camera.origin.x() = 3.456f;
     _camera.origin.y() = 2.345f;
     _camera.fov = 1;// static_cast<float>(M_PI)/3.14f;
@@ -109,6 +69,10 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit, Window *parent)
 
     keyMap['e'].keydownEvent = [this](){ _player.doInteract(); };
 }
+
+RayCarter::~RayCarter() {}
+
+Map &RayCarter::map() {return _map;}
 
 
 void RayCarter::draw()
@@ -158,14 +122,16 @@ void RayCarter::draw()
 
             if(_map[mapPos] != ' ') // if something on the way
             {
-                const auto itex = _map[mapPos] - '0';
-
                 const auto dist = t*std::cos(angle-_camera.direction);
                 depthBuffer[i] = dist;
-                const TSize columnH = TSize(_height/dist);
-                auto xtex = _map.wall2texcoord(cx,cy);
 
-                TArray<uint32_t> column = _map.getTexture(itex, xtex, columnH);
+                const auto itex = _map[mapPos] - '0';
+                auto tex = _map.getTexture(itex);
+
+                const TSize columnH = TSize(_height/dist);
+                auto xtex = wall2texcoord(cx,cy,tex.w);
+
+                TArray<uint32_t> column = tex.getScaledColumn(xtex, columnH);
 
                 TSize wallTop = _height/2 - columnH/2;
                 TSize wallBottom = wallTop+columnH;
@@ -211,52 +177,17 @@ void RayCarter::draw()
     for(auto &drawable : drawList)
     {
         drawable->updateDist(_camera.origin.x(),_camera.origin.y());
-        Sprite* s = dynamic_cast<Sprite*>(drawable);
-        if(s)
-        {
-            drawSprite(*s,depthBuffer);
-            continue;
-        }
-        NSprite *n = dynamic_cast<NSprite*>(drawable);
-        drawSprite(*n,depthBuffer);
+        Sprite *n = dynamic_cast<Sprite*>(drawable);
+        if(n)
+            drawSprite(*n,depthBuffer);
     }
 
     drawGUI();
     screen.update();    
 }
 
+
 void RayCarter::drawSprite(const Sprite &sprite, const TArray<float> &depthBuffer)
-{
-    float spriteDir = atan2(sprite.y - _camera.origin.y(), sprite.x - _camera.origin.x());
-    while(spriteDir - _camera.direction > M_PI) spriteDir -= 2*M_PI;
-    while(spriteDir - _camera.direction < - M_PI) spriteDir += 2*M_PI;
-
-    auto dist = sprite.dist < 1 ? 1 : sprite.dist;
-    TSize spriteScreenSize = std::min(static_cast<int>(_width/dist), static_cast<int>(_height/dist));
-    int hOffset = (spriteDir - _camera.direction)*(_width)/(_camera.fov) + (_width)/2 - spriteScreenSize/2;
-    int vOffset = _height/2 - spriteScreenSize/2;
-
-//#pragma omp parallel for
-    for(TSize i=0;i<spriteScreenSize;++i)
-    {
-        if(hOffset+int(i)<0 || hOffset+i >= _width) continue;
-        if(depthBuffer[hOffset + i]<sprite.dist) continue;
-        for(TSize j=0;j<spriteScreenSize;++j)
-        {
-            if(vOffset+int(j)<0 || vOffset+j>=_height) continue;
-            Color color = sprite.get(i,j,spriteScreenSize);
-            if(color.alpha() > 128)
-            {
-                const auto x = hOffset+i;
-                const auto y = vOffset+j;
-                if(y < _height-_guiHeight)
-                    screen.drawPoint({x,y},color);
-            }
-        }
-    }
-}
-
-void RayCarter::drawSprite(const NSprite &sprite, const TArray<float> &depthBuffer)
 {
     auto texture = sprite.tex.lock();
     float spriteDir = atan2(sprite.y - _camera.origin.y(), sprite.x - _camera.origin.x());
@@ -329,7 +260,7 @@ void RayCarter::physX()
             auto actor2 = dynamic_cast<Actor*>(o2);
             if(!actor2) continue;
             //if(collisionCheck(*actor, *actor2))
-            if(intersect(actor->getRect(),actor2->getRect()))
+            if(intersect(actor->getCollisionRect(),actor2->getCollisionRect()))
             {
                 actor->collision(actor2);
                 actor2->collision(actor);
@@ -338,27 +269,19 @@ void RayCarter::physX()
     }
 }
 
-bool RayCarter::collisionCheck(const Actor &rect1, const Actor &rect2)
+int RayCarter::wall2texcoord(float hx, float hy, int tw)
 {
-    const auto x1 = rect1.position().x() - rect1.rectSize.x();
-    const auto w1 = rect1.rectSize.x() * 2;
+    float x = hx - floor(hx+.5);
+    float y = hy - floor(hy+.5);
 
-    const auto y1 = rect1.position().y() - rect1.rectSize.y();
-    const auto h1 = rect1.rectSize.y() * 2;
-
-    const auto x2 = rect2.position().x() - rect2.rectSize.x();
-    const auto w2 = rect2.rectSize.x() * 2;
-
-    const auto y2 = rect2.position().y() - rect2.rectSize.y();
-    const auto h2 = rect2.rectSize.y() * 2;
-
-    if( (x1 < x2 + w2) &&
-        (x1 + w1 > x2) &&
-        (y1 < y2 + h2) &&
-        (y1 + h1 > y2) )
-        return true;
-    return false;
+    int tex = x * tw;
+    if(abs(y) > abs(x))
+        tex = y*tw;
+    if(tex < 0)
+        tex+=tw;
+    return tex;
 }
+
 
 void RayCarter::init()
 {
