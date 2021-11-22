@@ -12,13 +12,16 @@ public:
     Drawable(TReal x, TReal y);
     virtual ~Drawable();
     virtual void update() = 0;
-
+    bool operator<(const Drawable &s) const;
     static const std::list<Drawable*> &getRegister();
+    static void sort();
 
     void updateDist(TReal x, TReal y);
 
     TReal dist;
     TReal x,y;
+
+    Vector2D pos;
 
 private:
     static std::list<Drawable*> _drawableRegister;
@@ -31,7 +34,7 @@ struct Sprite : public Drawable
     ~Sprite() override;
 
     void update() override;
-    bool operator<(const Sprite &s) const;
+
     uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
 
     PTexture tex;

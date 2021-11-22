@@ -49,11 +49,15 @@ void CustomServer::onClientDisconnect(std::shared_ptr<Connection<CustomMsgTypes>
     std::cout << "Someone disconnected\n";
     if(client)
     {
-        auto &list = GameObject::getRegister();
-        auto it = std::find_if(list.begin(),list.end(), [this](const auto &a)->bool{return a->name == playername;});
-        if(it!=list.end())
+        if(_mapPlayerRoster.find(client->getID()) == _mapPlayerRoster.end())
         {
+
+        }
+        else
+        {
+            auto &pd = _mapPlayerRoster[client->getID()];
             std::cout << "[UNGRACEFUL REMOVAL]:" + playername + "\n";
+            _mapPlayerRoster.erase(client->getID());
             _vGarbageIDs.push_back(client->getID());
         }
     }

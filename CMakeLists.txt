@@ -11,6 +11,7 @@ set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 
 find_package(SDL2 REQUIRED)
@@ -68,10 +69,10 @@ target_link_libraries(${PROJECT_NAME} openal)
 
 add_executable(${PROJECT_NAME}_server ${SERVER})
 target_link_libraries(${PROJECT_NAME}_server  ${SDL2_LIBRARIES})
-target_include_directories(${PROJECT_NAME}_server PRIVATE "${SRC_DIR}")
+#target_include_directories(${PROJECT_NAME}_server PRIVATE "${SRC_DIR}")
 target_link_libraries(${PROJECT_NAME}_server openal)
 
 add_executable(${PROJECT_NAME}_client ${CLIENT})
 target_link_libraries(${PROJECT_NAME}_client  ${SDL2_LIBRARIES})
-target_include_directories(${PROJECT_NAME}_client PRIVATE "${SRC_DIR}")
+#target_include_directories(${PROJECT_NAME}_client PRIVATE "${SRC_DIR}")
 target_link_libraries(${PROJECT_NAME}_client openal)

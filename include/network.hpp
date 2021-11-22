@@ -106,8 +106,6 @@ protected:
     std::deque<T> _data;
     std::condition_variable _cvBlock;
     std::mutex _blockMutex;
-
-
 };
 
 template<typename T>
@@ -663,23 +661,3 @@ private:
     uint32_t _idCounter = 10000;
 };
 
-class Network
-{
-public:
-    Network();
-
-    bool open(const asio::ip::address &addr, int &port);
-    void close();
-    void setPeer(const asio::ip::udp::endpoint &ep);
-    void send(void *buffer, size_t size);
-    void asyncReceive(std::function<void (void*,size_t)> cb);
-
-
-    void testSend();
-
-    void arrrComeAndGetSome(asio::ip::tcp::socket &sock);
-
-private:
-    std::vector<char> vBuffer;
-
-};

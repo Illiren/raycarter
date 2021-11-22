@@ -8,6 +8,27 @@
 #include <mutex>
 #include <condition_variable>
 
+struct Serializable
+{
+    template<typename T>    
+    static TSize serializableSize(T value) requires std::is_standard_layout<T>
+    {
+        return sizeof(T);
+    }
+
+    template<typename T>
+    static char *serialize(char *target, T value) requires std::is_standard_layout<T>
+    {
+        return std::copy(target, &value, serializableSize(value));
+    }
+
+    template<typename T>
+    static char *deserialize(const char *source, T &target) requires std::is_standard_layout<T>
+    {
+        //std::memcpy();
+        return nullptr;
+    }
+};
 
 
 template<typename KeyType, typename Type>

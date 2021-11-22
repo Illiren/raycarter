@@ -5,6 +5,7 @@
 #include <limits>
 #include <cassert>
 #include <vector>
+#include <list>
 #include <string>
 #include <unordered_map> //TODO: Replace by custom hash
 
@@ -21,11 +22,18 @@ using TInt64 = signed long int;
 template<typename T, typename A = std::allocator<T>>
 using TArray = std::vector<T,A>;
 
+template<typename T, typename A = std::allocator<T>>
+using TList = std::list<T,A>;
+
 template<typename T, TSize size>
 using TStaticArray = std::array<T,size>;
 
-template<typename T, typename A = std::allocator<T>>
-using THashMap = std::unordered_map<T,A>;
+template<class Key,
+         class T,
+         class Hash = std::hash<Key>,
+         class KeyEqual = std::equal_to<Key>,
+         class A = std::allocator<std::pair<const Key, T>>>
+using THashMap = std::unordered_map<Key,T,Hash,KeyEqual,A>;
 
 template<typename T, typename U>
 using TPair = std::pair<T,U>;
@@ -34,4 +42,7 @@ template<typename ...Args>
 using TTuple = std::tuple<Args...>;
 
 using TString = std::string;
+
+template<typename T>
+using TInitializerList = std::initializer_list<T>;
 

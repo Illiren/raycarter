@@ -3,8 +3,9 @@
 #include "drawable.hpp"
 #include "game_object.hpp"
 #include "map.hpp"
+#include "camera.hpp"
 
-struct Actor : public GameObject
+class Actor : public GameObject
 {
 public:
     Actor();
@@ -28,3 +29,5 @@ public:
 public:
     void update(TReal dt) override;
 };
+
+

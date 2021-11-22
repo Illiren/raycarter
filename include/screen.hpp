@@ -39,7 +39,6 @@ public:
         return (*_framebuffer)[pos];
     }
 
-
     inline TSize pixCount() const noexcept {return _framebuffer->size();}
 
     TSize width() const noexcept {return _width;}

@@ -4,7 +4,7 @@
 #include "network.hpp"
 #include <thread>
 
-struct NActor : public GameObject
+struct NetActor : public GameObject
 {
     enum WalkState
     {
@@ -28,10 +28,10 @@ struct NActor : public GameObject
     TReal dir;
 
 
-    NActor() :
+    NetActor() :
           GameObject()
     {}
-    ~NActor() override {}
+    ~NetActor() override {}
 
     virtual void setPos(const Vector2D &v)
     {
@@ -132,7 +132,7 @@ struct CameraObject : public GameObject
     }
 
 
-    NActor *actor = nullptr;
+    NetActor *actor = nullptr;
     Vector2D pos;
     TReal direction;  //direction
     TReal fov; //field of view
@@ -204,7 +204,7 @@ public:
     TSize width = 768;
 
     Font font;
-    std::unordered_map<uint32_t,NActor> mapObject;
+    std::unordered_map<uint32_t,NetActor> mapObject;
     uint32_t playerID = 0;
     PlayerDescription desc;
     TextureDB textDB;
@@ -361,7 +361,7 @@ protected:
                     Message<CustomMsgTypes> msg;
                     msg.header.id = CustomMsgTypes::ClientRegister;
                     desc.pos = {3.456f,2.345f};
-                    desc.avatarID = 0;
+                    desc.avatarID = 1;
 
                     msg << desc;
                     send(msg);
@@ -446,32 +446,31 @@ protected:
     }
 
 
-
     static int wall2texcoord(float hx, float hy, int tw);
 
 private:
     bool isWaitingForConnection = true;
 
 
-    NActor actorFromDesc(const PlayerDescription &d)
+    NetActor actorFromDesc(const PlayerDescription &d)
     {
-        NActor a;
+        NetActor a;
         a.id = d.uniqueID;
         a.drawable.reset(new Sprite(textDB["player"+std::to_string(d.avatarID)],d.pos));
         a.map = &map;
         return a;
     }
 
-    void updateActor(NActor &a, const PlayerDescription &d)
+    void updateActor(NetActor &a, const PlayerDescription &d)
     {
         a.setPos(d.pos);
     }
 
-    void actor2desc(PlayerDescription &d, const NActor &a)
+    void actor2desc(PlayerDescription &d, const NetActor &a)
     {
         d.pos = a.position();
         d.uniqueID = a.id;
-        //d.walk = a.walk;
+        d.walk = a.walk;
     }
 };
 

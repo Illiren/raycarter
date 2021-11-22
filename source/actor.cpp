@@ -1,11 +1,18 @@
 #include "actor.hpp"
 
+ActorComponent::ActorComponent(NActor *actorParent) :
+      owner(actorParent)
+{}
+
+
 Actor::Actor() :
       rectSize{0.3f,0.3f}
 {}
 
 Actor::~Actor()
-{}
+{
+    GameObject::~GameObject();
+}
 
 void Actor::setPos(const Vector2D &v)
 {
@@ -58,5 +65,6 @@ void Actor::interract(Actor *causer)
 void Actor::update(TReal dt)
 {
 
-
 }
+
+

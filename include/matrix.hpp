@@ -4,234 +4,987 @@
 #include <cmath>
 
 #include "stddefines.hpp"
+#include <concepts>
 
 namespace Math
 {
 
-    //TODO: deteminant, norm, normilize e.t.c.
-    //TODO: Spec for Matrix<2,2>, Matrix<3,3>, Matrix<4,4>
+template <typename T> concept Arithmetic = std::is_arithmetic_v<T>;
+template <typename From, typename To> concept Convertible = std::is_convertible_v<From,To>;
+template <typename T> concept Integral = std::is_integral_v<T>;
 
-template<typename T, TSize Rows, TSize Cols>
+template <typename T, TSize R, TSize C>
 struct Matrix
 {
+    static constexpr auto Rows = R;
+    static constexpr auto Columns = C;
+    static constexpr auto Size = R * C;
     using Type = T;
-    using Pointer = Type*;
-    using ConstPointer = Type const *;
-    using Reference = Type &;
+    using Pointer = T *;
+    using Reference = T &;
     using ConstReference = const Type &;
-    using ColumnRef = Type (&)[Cols];
-    using ConstColumnRef = const Type (&)[Cols];
+    using ColumnRef = Type (&)[Columns];
+    using ConstColumnRef = const Type (&)[Columns];
+    using TData = Type[Rows][Columns];
+    using RefData = Type (&)[Rows][Columns];
+    using ConstRefData = const Type (&)[Rows][Columns];
 
-    //TODO: Do we need data init in default constructor
-    Matrix() noexcept
-    {}
-
-    explicit Matrix(T defaultValue) noexcept
+    constexpr Matrix() noexcept {}
+    constexpr Matrix(T defaultValue) noexcept
     {
-        for(TSize i=Rows;i--;)
-            for(TSize j=Cols;j--; _data[i][j]=defaultValue);
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] = defaultValue);
+    }
+    constexpr Matrix(const Matrix &rhs) noexcept {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] = rhs._data[i][j]);
+    }
+    constexpr Matrix(Matrix &&rhs) noexcept {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] = rhs._data[i][j]);
+    }
+    constexpr Matrix(Type (&data)[Rows][Columns]) {
+        for(TSize i = Rows; i--;)
+            for(TSize j = Columns; j--; _data[i][j] = data[i][j]);
+    }
+    constexpr Matrix(TInitializerList<T[Columns]> data) {
+        assert(data.size() == Rows && "Rows size not match");
+        auto it = data.begin();
+        const auto end = data.end();
+        for(TSize i = 0; it != end; ++it, i++)
+            for(TSize j = Columns; j--; _data[i][j] = (*it)[j]);
     }
 
-    explicit Matrix(const Matrix &rhs) noexcept
-    {
-        for(TSize i=Rows;i--;)
-            for(TSize j=Cols;j--; _data[i][j]=rhs._data[i][j]);
-    }
-
-    explicit Matrix(Matrix &&rhs) noexcept
-    {
-        for(TSize i=Rows;i--;)
-            for(TSize j=Cols;j--; _data[i][j]=rhs._data[i][j]);
-    }
-
-    Matrix &operator=(const Matrix &rhs)
-    {
-        for(TSize i=Rows;i--;)
-            for(TSize j=Cols;j--;_data[i][j]=rhs._data[i][j]);
+    Matrix &operator=(const Matrix &rhs) noexcept {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] = rhs._data[i][j]);
         return *this;
     }
 
-    Matrix &operator=(const Matrix &&rhs)
-    {
-        for(TSize i=Rows;i--;)
-            for(TSize j=Cols;j--;_data[i][j]=rhs._data[i][j]);
+    Matrix &operator=(Matrix &&rhs) noexcept {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] = rhs._data[i][j]);
         return *this;
     }
 
-    ColumnRef operator[](const TSize row)
-    {
-        assert(row < Rows);
-        return _data[row];
+    ColumnRef operator[](TSize pos) noexcept {
+        assert(pos < Rows && "out of row range");
+        return _data[pos];
     }
-
-    ConstColumnRef operator[](const TSize row) const
-    {
-        assert(row < Rows);
-        return _data[row];
-    }
-
-    //{Row,Col}
-    Reference operator[](std::pair<TSize,TSize> pos)
-    {
-        assert(pos.first < Rows);
-        assert(pos.second < Cols);
-        return _data[pos.first][pos.second];
-    }
-
-    //{Row,Col}
-    ConstReference operator[](std::pair<TSize,TSize> pos) const
-    {
-        assert(pos.first < Rows);
-        assert(pos.second < Cols);
-        return _data[pos.first][pos.second];
-    }
-
-    constexpr auto rows() const noexcept
-    {
-        return Rows;
-    }
-
-    constexpr auto size() const noexcept
-    {
-        return Rows*Cols;
-    }
-
-    constexpr auto columns() const noexcept
-    {
-        return Cols;
-    }
-
-
-
-private:
-    T _data[Rows][Cols];
-};
-
-
-template<typename T, TSize Num>
-struct Matrix<T,1,Num> //Vector
-{
-    using Type = T;
-    using Pointer = Type*;
-    using ConstPointer = Type const *;
-    using Reference = Type &;
-    using ConstReference = const Type &;
-    using ColumnRef = Type &;
-    using ConstColumnRef = const Type &;
-
-
-    Matrix() noexcept
-    {}
-
-    explicit Matrix(const T defaultValue) noexcept
-    {
-        for(TSize i = Num; i--; _data[i]=defaultValue);
-    }
-
-    Matrix(const Matrix &matrix)
-    {
-        for(TSize i=Num; i--; _data[i] = matrix._data[i]);
-    }
-
-    Matrix(Matrix &&matrix)
-    {
-        for(TSize i=Num; i--; _data[i] = matrix._data[i]);
-    }
-
-    Matrix(const T (&t)[Num])
-    {
-        for(TSize i=Num;i--;_data[i] = t[i]);
-    }
-
-    Matrix &operator=(const Matrix &rhs)
-    {
-        for(TSize i=Num;i--;_data[i]=rhs._data[i]);
-        return *this;
-    }
-
-    Matrix &operator=(Matrix &&rhs)
-    {
-        for(TSize i=Num;i--;_data[i]=rhs._data[i]);
-        return *this;
-    }
-
-    T &operator[](const TSize pos)
-    {
-        assert(pos < Num);
+    ConstColumnRef operator[](TSize pos) const noexcept {
+        assert(pos < Rows && "out of row range");
         return _data[pos];
     }
 
-    const T &operator[](const TSize pos) const
-    {
-        assert(pos < Num);
-        return _data[pos];
+    constexpr TSize rows() const noexcept { return Rows; }
+    constexpr TSize columns() const noexcept { return Columns; }
+    constexpr TSize size() const noexcept { return Size; }
+
+    inline operator RefData() noexcept { return _data; }
+    inline operator ConstRefData() const noexcept { return _data; }
+
+    // Math operations
+    Matrix operator-() const noexcept requires Arithmetic<T>{
+        Matrix newOne;
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; newOne._data[i][j] = -_data[i][j]);
+        return newOne;
+    }
+    Matrix &operator-=(Matrix m) noexcept requires Arithmetic<T> {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] -= m._data[i][j]);
+        return *this;
+    }
+    Matrix &operator+=(Matrix m) noexcept requires Arithmetic<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] += m._data[i][j]);
+        return *this;
+    }
+    Matrix &operator*=(Matrix m) noexcept requires Arithmetic<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] *= m._data[i][j]);
+        return *this;
+    }
+    Matrix &operator/=(Matrix m) requires Arithmetic<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] /= m._data[i][j]);
+        return *this;
+    }
+    Matrix &operator%=(Matrix m) requires Integral<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] %= m._data[i][j]);
+        return *this;
     }
 
-    T norm() const noexcept
-    {
-        T result = 0;
-        for(TSize i = 0; i<Num; ++i)
-            result+=_data[i]*_data[i];
-        return std::sqrt(result);
+
+    Matrix &operator-=(T m) noexcept requires Arithmetic<T> {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] -= m);
+        return *this;
+    }
+    Matrix &operator+=(T m) noexcept requires Arithmetic<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] += m);
+        return *this;
+    }
+    Matrix &operator*=(T m) noexcept requires Arithmetic<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] *= m);
+        return *this;
+    }
+    Matrix &operator/=(T m) requires Arithmetic<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] /= m);
+        return *this;
+    }
+    Matrix &operator%=(T m) requires Integral<T>{
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] %= m);
+        return *this;
     }
 
-    constexpr auto rows() const noexcept
+    // bitwise
+    Matrix operator~() noexcept requires Integral<T>
     {
-        return 1;
+        Matrix newOne;
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; newOne._data[i][j] = ~_data[i][j]);
+        return newOne;
     }
 
-    constexpr auto size() const noexcept
+    Matrix &operator&=(Matrix m) noexcept requires Integral<T>
     {
-        return Num;
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] &= m._data[i][j]);
+        return *this;
     }
 
-    constexpr auto columns() const noexcept
+    Matrix &operator^=(Matrix m) noexcept requires Integral<T>
     {
-        return Num;
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] ^= m._data[i][j]);
+        return *this;
     }
 
-    inline explicit operator auto() {return _data;}
+    Matrix &operator|=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] |= m._data[i][j]);
+        return *this;
+    }
 
-private:
-    T _data[Num];
+    Matrix &operator<<=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] <<= m._data[i][j]);
+        return *this;
+    }
+
+    Matrix &operator>>=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] >>= m._data[i][j]);
+        return *this;
+    }
+
+    //value bitwise
+    Matrix &operator&=(T m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] &= m);
+        return *this;
+    }
+
+    Matrix &operator^=(T m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] ^= m);
+        return *this;
+    }
+
+    Matrix &operator|=(T m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] |= m);
+        return *this;
+    }
+
+    Matrix &operator<<=(T m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] <<= m);
+        return *this;
+    }
+
+    Matrix &operator>>=(T m) noexcept requires Integral<T>
+    {
+        for (TSize i = Rows; i--;)
+            for (TSize j = Columns; j--; _data[i][j] >>= m);
+        return *this;
+    }
+
+
+    //Convertible
+    template<typename U>
+    operator Matrix<U,R,C>() const noexcept requires Convertible<T,U>
+    {
+        Matrix<U,R,C> m;
+        for(TSize i=R;i--;)
+            for(TSize j=C;j--;m[i][j] = static_cast<U>(_data[i][j]));
+        return m;
+    }
+
+
+protected:
+    TData _data;
 };
 
-
-//Vector4D
-template<typename T>
-struct Matrix<T,1,4>
+template <typename T, TSize S>
+struct Matrix<T, 1, S>
 {
+    static constexpr auto Rows = 1;
+    static constexpr auto Columns = S;
+    static constexpr auto Size = S;
     using Type = T;
-    using Pointer = Type*;
-    using ConstPointer = Type const *;
-    using Reference = Type &;
+    using Pointer = T *;
+    using Reference = T &;
     using ConstReference = const Type &;
-    using ColumnRef = Type &;
-    using ConstColumnRef = const Type &;
+    using ColumnRef = Reference;
+    using ConstColumnRef = ConstReference;
+    using TData = Type[Columns];
+    using RefData = Type (&)[Columns];
+    using ConstRefData = const Type (&)[Columns];
 
-    static constexpr TSize Num = 4;
-
-    Matrix() noexcept
-    {}
-
-    Matrix(T x, T y, T z, T w) noexcept :
-        _data{x,y,z,w}
-    {}
-
-    Matrix(const T (&t)[4]) noexcept :
-        _data{t[0],t[1],t[2],t[3]}
-    {}
-
-    Matrix(const Matrix &m) noexcept :
-        _data{m[0],m[1],m[2],m[3]}
-    {}
-
-    Matrix(Matrix &&m) noexcept :
-        _data{m[0],m[1],m[2],m[3]}
-    {}
-
-    Matrix &operator=(const Matrix &rhs)
+    constexpr Matrix() noexcept {}
+    constexpr Matrix(TInitializerList<T> initList) noexcept
     {
+        assert(initList.size() == Size);
+        TSize i = 0;
+        for (auto it : initList)
+            _data[i++] = it;
+    }
+    constexpr Matrix(const T (&d)[Size]) noexcept {
+        for (TSize i = Size; i--; _data[i] = d[i]);
+    }
+
+    constexpr Matrix(const Matrix &v) noexcept
+    {
+        for (TSize i = Size; i--; _data[i] = v._data[i]);
+    }
+    constexpr Matrix(Matrix &&v) noexcept
+    {
+        for (TSize i = Size; i--; _data[i] = v._data[i]);
+    }
+
+    Matrix &operator=(const Matrix &rhs) noexcept
+    {
+        for (TSize i = Size; i--; _data[i] = rhs._data[i]);
+        return *this;
+    }
+
+    Matrix &operator=(Matrix &&rhs) noexcept
+    {
+        for (TSize i = Size; i--; _data[i] = rhs._data[i]);
+        return *this;
+    }
+
+    Reference &operator[](TSize pos) noexcept
+    {
+        assert(pos < Size);
+        return _data[pos];
+    }
+    ConstReference &operator[](TSize pos) const noexcept
+    {
+        assert(pos < Size);
+        return _data[pos];
+    }
+    constexpr TSize rows() const noexcept { return Rows; }
+    constexpr TSize columns() const noexcept { return Columns; }
+    constexpr auto size() const noexcept { return Size; }
+
+    operator RefData() { return _data; }
+    operator ConstRefData() const { return _data; }
+
+    // Math operations
+    Matrix operator-() const requires Arithmetic<T>
+    {
+        Matrix newOne;
+        for (TSize j = Columns; j--; _data[j] = -_data[j]);
+        return newOne;
+    }
+    Matrix &operator-=(Matrix m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] -= m._data[j]);
+        return *this;
+    }
+    Matrix &operator+=(Matrix m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] += m._data[j]);
+        return *this;
+    }
+    Matrix &operator*=(Matrix m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] *= m._data[j]);
+        return *this;
+    }
+    Matrix &operator/=(Matrix m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] /= m._data[j]);
+        return *this;
+    }
+    Matrix &operator%=(Matrix m) requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] %= m._data[j]);
+        return *this;
+    }
+
+    Matrix &operator-=(T m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] -= m);
+        return *this;
+    }
+    Matrix &operator+=(T m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] += m);
+        return *this;
+    }
+    Matrix &operator*=(T m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] *= m);
+        return *this;
+    }
+    Matrix &operator/=(T m) requires Arithmetic<T>
+    {
+        for (TSize j = Columns; j--; _data[j] /= m);
+        return *this;
+    }
+    Matrix &operator%=(T m) requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] %= m);
+        return *this;
+    }
+
+    // bitwise
+    Matrix operator~() noexcept requires Integral<T>
+    {
+        Matrix newOne;
+        for (TSize j = Columns; j--; newOne._data[j] = ~_data[j]);
+        return newOne;
+    }
+
+    Matrix &operator&=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] &= m._data[j]);
+        return *this;
+    }
+
+    Matrix &operator^=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] ^= m._data[j]);
+        return *this;
+    }
+
+    Matrix &operator|=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] |= m._data[j]);
+        return *this;
+    }
+
+    Matrix &operator<<=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] <<= m._data[j]);
+        return *this;
+    }
+
+    Matrix &operator>>=(Matrix m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] >>= m._data[j]);
+        return *this;
+    }
+
+    //value bitwise
+    Matrix &operator&=(T m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] &= m);
+        return *this;
+    }
+
+    Matrix &operator^=(T m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] ^= m);
+        return *this;
+    }
+
+    Matrix &operator|=(T m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] |= m);
+        return *this;
+    }
+
+    Matrix &operator<<=(T m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] <<= m);
+        return *this;
+    }
+
+    Matrix &operator>>=(T m) noexcept requires Integral<T>
+    {
+        for (TSize j = Columns; j--; _data[j] >>= m);
+        return *this;
+    }
+
+    auto length() const noexcept requires Arithmetic<T>
+    {
+        Type accum = 0;
+        for (TSize i = Size; i++; accum += _data[i] * _data[i]);
+        return static_cast<Type>(sqrt(static_cast<float>(accum)));
+    }
+
+    Matrix &unit() noexcept requires Arithmetic<T>
+    {
+        auto k = T(1) / length();
+        for (TSize i = Size; i++; _data[i] *= k);
+        return *this;
+    }
+
+    template<typename U>
+    operator Matrix<U,1,S>() const noexcept requires Convertible<T,U>
+    {
+        Matrix<U,1,S> m;
+        for(TSize i=S;i--; m[i] = static_cast<U>(_data[i]));
+        return m;
+    }
+
+protected:
+    TData _data;
+};
+
+template <typename T>
+struct Matrix<T, 1, 2>
+{
+    static constexpr auto Rows = 1;
+    static constexpr auto Columns = 2;
+    static constexpr auto Size = 2;
+    using Type = T;
+    using Pointer = T *;
+    using Reference = T &;
+    using ConstReference = const Type &;
+    using ColumnRef = Reference;
+    using ConstColumnRef = ConstReference;
+    using TData = Type[Columns];
+    using RefData = Type (&)[Columns];
+    using ConstRefData = const Type (&)[Columns];
+
+    constexpr Matrix() noexcept {}
+    constexpr Matrix(Type x, Type y) noexcept : _data{x, y} {}
+    constexpr Matrix(const T (&d)[Size]) noexcept : _data{d[0], d[1]} {}
+    constexpr Matrix(const Matrix &v) noexcept : _data{v._data[0], v._data[1]} {}
+    constexpr Matrix(Matrix &&v) noexcept : _data{v._data[0], v._data[1]} {}
+
+    Matrix &operator=(const Matrix &rhs) noexcept {
+        _data[0] = rhs._data[0];
+        _data[1] = rhs._data[1];
+        return *this;
+    }
+
+    Matrix &operator=(Matrix &&rhs) noexcept {
+        _data[0] = rhs._data[0];
+        _data[1] = rhs._data[1];
+        return *this;
+    }
+
+    Reference &operator[](TSize pos) noexcept {
+        assert(pos < Size);
+        return _data[pos];
+    }
+    ConstReference &operator[](TSize pos) const noexcept {
+        assert(pos < Size);
+        return _data[pos];
+    }
+    constexpr auto size() const noexcept { return Size; }
+    constexpr TSize rows() const noexcept { return Rows; }
+    constexpr TSize columns() const noexcept { return Columns; }
+
+    operator RefData() { return _data; }
+    operator ConstRefData() const { return _data; }
+
+    inline Reference x() noexcept { return _data[0]; }
+    inline Reference y() noexcept { return _data[1]; }
+    inline ConstReference x() const noexcept { return _data[0]; }
+    inline ConstReference y() const noexcept { return _data[1]; }
+
+    // Math operations
+    Matrix operator-() const
+    {
+        Matrix newOne;
+        newOne[0] = -_data[0];
+        newOne[1] = -_data[1];
+        return newOne;
+    }
+    Matrix &operator-=(Matrix m)
+    {
+        _data[0] -= m._data[0];
+        _data[1] -= m._data[1];
+        return *this;
+    }
+    Matrix &operator+=(Matrix m)
+    {
+        _data[0] += m._data[0];
+        _data[1] += m._data[1];
+        return *this;
+    }
+    Matrix &operator*=(Matrix m)
+    {
+        _data[0] *= m._data[0];
+        _data[1] *= m._data[1];
+        return *this;
+    }
+    Matrix &operator/=(Matrix m)
+    {
+        _data[0] /= m._data[0];
+        _data[1] /= m._data[1];
+        return *this;
+    }
+
+    Matrix &operator%=(Matrix m)
+    {
+        _data[0] %= m._data[0];
+        _data[1] %= m._data[1];
+        return *this;
+    }
+
+    Matrix &operator-=(T m)
+    {
+        _data[0] -= m;
+        _data[1] -= m;
+        return *this;
+    }
+    Matrix &operator+=(T m)
+    {
+        _data[0] += m;
+        _data[1] += m;
+        return *this;
+    }
+    Matrix &operator*=(T m)
+    {
+        _data[0] *= m;
+        _data[1] *= m;
+        return *this;
+    }
+    Matrix &operator/=(T m)
+    {
+        _data[0] /= m;
+        _data[1] /= m;
+        return *this;
+    }
+
+    Matrix &operator%=(T m)
+    {
+        _data[0] %= m;
+        _data[1] %= m;
+        return *this;
+    }
+
+    // bitwise
+    Matrix operator~() noexcept requires Integral<T>
+    {
+        Matrix newOne;
+        newOne._data[0] = ~_data[0];
+        newOne._data[1] = ~_data[1];
+        return newOne;
+    }
+
+    Matrix &operator&=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] &= m._data[0];
+        _data[1] &= m._data[1];
+        return *this;
+    }
+
+    Matrix &operator^=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] ^= m._data[0];
+        _data[1] ^= m._data[1];
+        return *this;
+    }
+
+    Matrix &operator|=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] |= m._data[0];
+        _data[1] |= m._data[1];
+        return *this;
+    }
+
+    Matrix &operator<<=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] <<= m._data[0];
+        _data[1] <<= m._data[1];
+        return *this;
+    }
+
+    Matrix &operator>>=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] >>= m._data[0];
+        _data[1] >>= m._data[1];
+        return *this;
+    }
+
+    //value bitwise
+    Matrix &operator&=(T m) noexcept requires Integral<T>
+    {
+        _data[0] &= m;
+        _data[1] &= m;
+        return *this;
+    }
+
+    Matrix &operator^=(T m) noexcept requires Integral<T>
+    {
+        _data[0] ^= m;
+        _data[1] ^= m;
+        return *this;
+    }
+
+    Matrix &operator|=(T m) noexcept requires Integral<T>
+    {
+        _data[0] |= m;
+        _data[1] |= m;
+        return *this;
+    }
+
+    Matrix &operator<<=(T m) noexcept requires Integral<T>
+    {
+        _data[0] <<= m;
+        _data[1] <<= m;
+        return *this;
+    }
+
+    Matrix &operator>>=(T m) noexcept requires Integral<T>
+    {
+        _data[0] >>= m;
+        _data[1] >>= m;
+        return *this;
+    }
+
+    auto length() const noexcept
+    {
+        return sqrt(_data[0] * _data[0] + _data[1] * _data[1]);
+    }
+
+    Matrix &unit() noexcept
+    {
+        auto k = T(1) / length();
+        _data[0] *= k;
+        _data[1] *= k;
+        return *this;
+    }
+
+    template<typename U>
+    operator Matrix<U,1,2>() const noexcept requires Convertible<T,U>
+    {
+        Matrix<U,1,2> m;
+        m.x() = static_cast<U>(_data[0]);
+        m.y() = static_cast<U>(_data[1]);
+        return m;
+    }
+
+protected:
+    TData _data;
+};
+
+template <typename T>
+struct Matrix<T, 1, 3>
+{
+    static constexpr auto Rows = 1;
+    static constexpr auto Columns = 3;
+    static constexpr auto Size = 3;
+    using Type = T;
+    using Pointer = T *;
+    using Reference = T &;
+    using ConstReference = const Type &;
+    using ColumnRef = Reference;
+    using ConstColumnRef = ConstReference;
+    using TData = Type[Columns];
+    using RefData = Type (&)[Columns];
+    using ConstRefData = const Type (&)[Columns];
+
+    constexpr Matrix() noexcept {}
+    constexpr Matrix(Type x, Type y, Type z) noexcept : _data{x, y, z} {}
+    constexpr Matrix(const T (&d)[Size]) noexcept : _data{d[0], d[1], d[2]} {}
+    constexpr Matrix(const Matrix &v) noexcept : _data{v._data[0], v._data[1], v._data[2]} {}
+    constexpr Matrix(Matrix &&v) noexcept : _data{v._data[0], v._data[1], v._data[2]} {}
+
+    Matrix &operator=(const Matrix &rhs) noexcept
+    {
+        _data[0] = rhs[0];
+        _data[1] = rhs[1];
+        _data[2] = rhs[2];
+        return *this;
+    }
+
+    Matrix &operator=(Matrix &&rhs) noexcept
+    {
+        _data[0] = rhs[0];
+        _data[1] = rhs[1];
+        _data[2] = rhs[2];
+        return *this;
+    }
+
+    Reference &operator[](TSize pos) noexcept
+    {
+        assert(pos < Size);
+        return _data[pos];
+    }
+    ConstReference &operator[](TSize pos) const noexcept
+    {
+        assert(pos < Size);
+        return _data[pos];
+    }
+    constexpr auto size() const noexcept { return Size; }
+    constexpr TSize rows() const noexcept { return Rows; }
+    constexpr TSize columns() const noexcept { return Columns; }
+
+    auto length() const noexcept
+    {
+        return sqrt(_data[0]*_data[0] + _data[1]*_data[1] + _data[2]*_data[2]);
+    }
+
+    Matrix &unit() noexcept
+    {
+        auto k = T(1) / length();
+        _data[0] *= k;
+        _data[1] *= k;
+        _data[2] *= k;
+        return *this;
+    }
+
+    operator RefData() { return _data; }
+    operator ConstRefData() const { return _data; }
+
+    inline Reference x() noexcept { return _data[0]; }
+    inline Reference y() noexcept { return _data[1]; }
+    inline Reference z() noexcept { return _data[2]; }
+    inline ConstReference x() const noexcept { return _data[0]; }
+    inline ConstReference y() const noexcept { return _data[1]; }
+    inline ConstReference z() const noexcept { return _data[2]; }
+
+    // Math operations
+    Matrix operator-() const
+    {
+        Matrix newOne;
+        newOne[0] = -_data[0];
+        newOne[1] = -_data[1];
+        newOne[2] = -_data[2];
+        return newOne;
+    }
+    Matrix &operator-=(Matrix m)
+    {
+        _data[0] -= m._data[0];
+        _data[1] -= m._data[1];
+        _data[2] -= m._data[2];
+        return *this;
+    }
+    Matrix &operator+=(Matrix m)
+    {
+        _data[0] += m._data[0];
+        _data[1] += m._data[1];
+        _data[2] += m._data[2];
+        return *this;
+    }
+    Matrix &operator*=(Matrix m)
+    {
+        _data[0] *= m._data[0];
+        _data[1] *= m._data[1];
+        _data[2] *= m._data[2];
+        return *this;
+    }
+    Matrix &operator/=(Matrix m)
+    {
+        _data[0] /= m._data[0];
+        _data[1] /= m._data[1];
+        _data[2] /= m._data[2];
+        return *this;
+    }
+    Matrix &operator%=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] %= m._data[0];
+        _data[1] %= m._data[1];
+        _data[2] %= m._data[2];
+        return *this;
+    }
+
+    Matrix &operator-=(T m)
+    {
+        _data[0] -= m;
+        _data[1] -= m;
+        _data[2] -= m;
+        return *this;
+    }
+    Matrix &operator+=(T m)
+    {
+        _data[0] += m;
+        _data[1] += m;
+        _data[2] += m;
+        return *this;
+    }
+    Matrix &operator*=(T m)
+    {
+        _data[0] *= m;
+        _data[1] *= m;
+        _data[2] *= m;
+        return *this;
+    }
+    Matrix &operator/=(T m)
+    {
+        _data[0] /= m;
+        _data[1] /= m;
+        _data[2] /= m;
+        return *this;
+    }
+    Matrix &operator%=(T m)
+    {
+        _data[0] %= m;
+        _data[1] %= m;
+        _data[2] %= m;
+        return *this;
+    }
+
+    // bitwise
+    Matrix operator~() noexcept requires Integral<T>
+    {
+        Matrix newOne;
+        newOne._data[0] = ~_data[0];
+        newOne._data[1] = ~_data[1];
+        newOne._data[2] = ~_data[2];
+        return newOne;
+    }
+
+    Matrix &operator&=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] &= m._data[0];
+        _data[1] &= m._data[1];
+        _data[2] &= m._data[2];
+        return *this;
+    }
+
+    Matrix &operator^=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] ^= m._data[0];
+        _data[1] ^= m._data[1];
+        _data[2] ^= m._data[2];
+        return *this;
+    }
+
+    Matrix &operator|=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] |= m._data[0];
+        _data[1] |= m._data[1];
+        _data[2] |= m._data[2];
+        return *this;
+    }
+
+    Matrix &operator<<=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] <<= m._data[0];
+        _data[1] <<= m._data[1];
+        _data[2] <<= m._data[2];
+        return *this;
+    }
+
+    Matrix &operator>>=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] >>= m._data[0];
+        _data[1] >>= m._data[1];
+        _data[2] >>= m._data[2];
+        return *this;
+    }
+
+    //value bitwise
+    Matrix &operator&=(T m) noexcept requires Integral<T>
+    {
+        _data[0] &= m;
+        _data[1] &= m;
+        _data[2] &= m;
+        return *this;
+    }
+
+    Matrix &operator^=(T m) noexcept requires Integral<T>
+    {
+        _data[0] ^= m;
+        _data[1] ^= m;
+        _data[2] ^= m;
+        return *this;
+    }
+
+    Matrix &operator|=(T m) noexcept requires Integral<T>
+    {
+        _data[0] |= m;
+        _data[1] |= m;
+        _data[2] |= m;
+        return *this;
+    }
+
+    Matrix &operator<<=(T m) noexcept requires Integral<T>
+    {
+        _data[0] <<= m;
+        _data[1] <<= m;
+        _data[2] <<= m;
+        return *this;
+    }
+
+    Matrix &operator>>=(T m) noexcept requires Integral<T>
+    {
+        _data[0] >>= m;
+        _data[1] >>= m;
+        _data[2] >>= m;
+        return *this;
+    }
+
+
+    template<typename U>
+    operator Matrix<U,1,3>() const noexcept requires Convertible<T,U>
+    {
+        Matrix<U,1,3> m;
+        m.x() = static_cast<U>(_data[0]);
+        m.y() = static_cast<U>(_data[1]);
+        m.z() = static_cast<U>(_data[2]);
+        return m;
+    }
+
+protected:
+    TData _data;
+};
+
+template <typename T>
+struct Matrix<T, 1, 4>
+{
+    static constexpr auto Rows = 1;
+    static constexpr auto Columns = 4;
+    static constexpr auto Size = 4;
+    using Type = T;
+    using Pointer = T *;
+    using Reference = T &;
+    using ConstReference = const Type &;
+    using ColumnRef = Reference;
+    using ConstColumnRef = ConstReference;
+    using TData = Type[Columns];
+    using RefData = Type (&)[Columns];
+    using ConstRefData = const Type (&)[Columns];
+
+    constexpr Matrix() noexcept {}
+    constexpr Matrix(Type x, Type y, Type z, Type w) noexcept
+        : _data{x, y, z, w}
+    {}
+    constexpr Matrix(const T (&d)[Size]) noexcept
+        : _data{d[0], d[1], d[2], d[3]}
+    {}
+    constexpr Matrix(const Matrix &v) noexcept :
+          _data{v._data[0], v._data[1], v._data[2], v._data[3]}
+    {}
+    constexpr Matrix(Matrix &&v) noexcept :
+          _data{v._data[0], v._data[1], v._data[2], v._data[3]}
+    {}
+
+    Matrix &operator=(const Matrix &rhs) noexcept {
         _data[0] = rhs._data[0];
         _data[1] = rhs._data[1];
         _data[2] = rhs._data[2];
@@ -239,8 +992,7 @@ struct Matrix<T,1,4>
         return *this;
     }
 
-    Matrix &operator=(Matrix &&rhs)
-    {
+    Matrix &operator=(Matrix &&rhs) noexcept {
         _data[0] = rhs._data[0];
         _data[1] = rhs._data[1];
         _data[2] = rhs._data[2];
@@ -248,790 +1000,772 @@ struct Matrix<T,1,4>
         return *this;
     }
 
-    Reference operator[](const TSize pos)
-    {
-        assert(pos < Num);
+    Reference &operator[](TSize pos) noexcept {
+        assert(pos < Size);
         return _data[pos];
     }
-
-    ConstReference operator[](const TSize pos) const
-    {
-        assert(pos < Num);
+    ConstReference &operator[](TSize pos) const noexcept {
+        assert(pos < Size);
         return _data[pos];
     }
+    constexpr auto size() const noexcept { return Size; }
+    constexpr TSize rows() const noexcept { return Rows; }
+    constexpr TSize columns() const noexcept { return Columns; }
 
-    constexpr auto rows() const noexcept
+    auto length() const noexcept
     {
-        return 1;
+        return sqrt(_data[0] * _data[0] + _data[1] * _data[1] +
+                    _data[2] * _data[2] + _data[3] * _data[3]);
     }
 
-    constexpr auto size() const noexcept
+    Matrix &unit() noexcept
     {
-        return Num;
+        auto k = T(1) / length();
+        _data[0] *= k;
+        _data[1] *= k;
+        _data[2] *= k;
+        _data[3] *= k;
+        return *this;
     }
 
-    constexpr auto columns() const noexcept
+    operator RefData() { return _data; }
+    operator ConstRefData() const { return _data; }
+
+    inline Reference x() noexcept { return _data[0]; }
+    inline Reference y() noexcept { return _data[1]; }
+    inline Reference z() noexcept { return _data[2]; }
+    inline Reference w() noexcept { return _data[3]; }
+    inline ConstReference x() const noexcept { return _data[0]; }
+    inline ConstReference y() const noexcept { return _data[1]; }
+    inline ConstReference z() const noexcept { return _data[2]; }
+    inline ConstReference w() const noexcept { return _data[3]; }
+
+    // Math operations
+    Matrix operator-() const {
+        Matrix newOne;
+        newOne[0] = -_data[0];
+        newOne[1] = -_data[1];
+        newOne[2] = -_data[2];
+        newOne[3] = -_data[3];
+        return newOne;
+    }
+    Matrix &operator-=(Matrix m) {
+        _data[0] -= m._data[0];
+        _data[1] -= m._data[1];
+        _data[2] -= m._data[2];
+        _data[3] -= m._data[3];
+        return *this;
+    }
+    Matrix &operator+=(Matrix m) {
+        _data[0] += m._data[0];
+        _data[1] += m._data[1];
+        _data[2] += m._data[2];
+        _data[3] += m._data[3];
+        return *this;
+    }
+    Matrix &operator*=(Matrix m) {
+        _data[0] *= m._data[0];
+        _data[1] *= m._data[1];
+        _data[2] *= m._data[2];
+        _data[3] *= m._data[3];
+        return *this;
+    }
+    Matrix &operator/=(Matrix m)
     {
-        return Num;
+        _data[0] /= m._data[0];
+        _data[1] /= m._data[1];
+        _data[2] /= m._data[2];
+        _data[3] /= m._data[3];
+        return *this;
+    }
+    Matrix &operator%=(Matrix m) noexcept requires Integral<T>
+    {
+        _data[0] %= m._data[0];
+        _data[1] %= m._data[1];
+        _data[2] %= m._data[2];
+        _data[3] %= m._data[3];
+        return *this;
+    }
+    Matrix &operator-=(T m) {
+        _data[0] -= m;
+        _data[1] -= m;
+        _data[2] -= m;
+        _data[3] -= m;
+        return *this;
+    }
+    Matrix &operator+=(T m) {
+        _data[0] += m;
+        _data[1] += m;
+        _data[2] += m;
+        _data[3] += m;
+        return *this;
+    }
+    Matrix &operator*=(T m) {
+        _data[0] *= m;
+        _data[1] *= m;
+        _data[2] *= m;
+        _data[3] *= m;
+        return *this;
+    }
+    Matrix &operator/=(T m) {
+        _data[0] /= m;
+        _data[1] /= m;
+        _data[2] /= m;
+        _data[3] /= m;
+        return *this;
+    }
+    Matrix &operator/=(T m) noexcept requires Integral<T>
+    {
+        _data[0] %= m;
+        _data[1] %= m;
+        _data[2] %= m;
+        _data[3] %= m;
+        return *this;
     }
 
-    inline ConstReference x() const noexcept
+    // bitwise
+    Matrix operator~() noexcept requires Integral<T>
     {
-        return _data[0];
+        Matrix newOne;
+        newOne._data[0] = ~_data[0];
+        newOne._data[1] = ~_data[1];
+        newOne._data[2] = ~_data[2];
+        newOne._data[3] = ~_data[3];
+        return newOne;
     }
 
-    inline ConstReference y() const noexcept
+    Matrix &operator&=(Matrix m) noexcept requires Integral<T>
     {
-        return _data[1];
+        _data[0] &= m._data[0];
+        _data[1] &= m._data[1];
+        _data[2] &= m._data[2];
+        _data[3] &= m._data[3];
+        return *this;
     }
 
-    inline ConstReference z() const noexcept
+    Matrix &operator^=(Matrix m) noexcept requires Integral<T>
     {
-        return _data[2];
+        _data[0] ^= m._data[0];
+        _data[1] ^= m._data[1];
+        _data[2] ^= m._data[2];
+        _data[3] ^= m._data[3];
+        return *this;
     }
 
-    inline ConstReference w() const noexcept
+    Matrix &operator|=(Matrix m) noexcept requires Integral<T>
     {
-        return _data[3];
+        _data[0] |= m._data[0];
+        _data[1] |= m._data[1];
+        _data[2] |= m._data[2];
+        _data[3] |= m._data[3];
+        return *this;
     }
 
-    inline Reference x() noexcept
+    Matrix &operator<<=(Matrix m) noexcept requires Integral<T>
     {
-        return _data[0];
+        _data[0] <<= m._data[0];
+        _data[1] <<= m._data[1];
+        _data[2] <<= m._data[2];
+        _data[3] <<= m._data[3];
+        return *this;
     }
 
-    inline Reference y() noexcept
+    Matrix &operator>>=(Matrix m) noexcept requires Integral<T>
     {
-        return _data[1];
+        _data[0] >>= m[0];
+        _data[1] >>= m[1];
+        _data[2] >>= m[2];
+        _data[3] >>= m[3];
+        return *this;
     }
 
-    inline Reference z() noexcept
+    //value bitwise
+    Matrix &operator&=(T m) noexcept requires Integral<T>
     {
-        return _data[2];
+        _data[0] &= m;
+        _data[1] &= m;
+        _data[2] &= m;
+        _data[3] &= m;
+        return *this;
+    }
+    Matrix &operator^=(T m) noexcept requires Integral<T>
+    {
+        _data[0] ^= m;
+        _data[1] ^= m;
+        _data[2] ^= m;
+        _data[3] ^= m;
+        return *this;
+    }
+    Matrix &operator|=(T m) noexcept requires Integral<T>
+    {
+        _data[0] |= m;
+        _data[1] |= m;
+        _data[2] |= m;
+        _data[3] |= m;
+        return *this;
+    }
+    Matrix &operator<<=(T m) noexcept requires Integral<T>
+    {
+        _data[0] <<= m;
+        _data[1] <<= m;
+        _data[2] <<= m;
+        _data[3] <<= m;
+        return *this;
+    }
+    Matrix &operator>>=(T m) noexcept requires Integral<T>
+    {
+        _data[0] >>= m;
+        _data[1] >>= m;
+        _data[2] >>= m;
+        _data[3] >>= m;
+        return *this;
     }
 
-    inline Reference w() noexcept
+    template<typename U>
+    operator Matrix<U,1,4>() const noexcept requires Convertible<T,U>
     {
-        return _data[3];
+        Matrix<U,1,4> m;
+        m.x() = static_cast<U>(_data[0]);
+        m.y() = static_cast<U>(_data[1]);
+        m.z() = static_cast<U>(_data[2]);
+        m.w() = static_cast<U>(_data[3]);
+        return m;
     }
 
-    inline explicit operator auto() {return _data;}
 
-    T norm()
-    {
-        return std::sqrt(_data[0]*_data[0] +
-                         _data[1]*_data[1] +
-                         _data[2]*_data[2] +
-                         _data[3]*_data[3]);
-    }
-
-private:
-    T _data[Num];
+protected:
+    TData _data;
 };
 
-
-
-//Vector3D
-template<typename T>
-struct Matrix<T,1,3>
+template <typename T>
+struct Matrix<T, 1, 1>
 {
+    static constexpr auto Rows = 1;
+    static constexpr auto Columns = 1;
+    static constexpr auto Size = 1;
     using Type = T;
-    using Pointer = Type*;
-    using ConstPointer = Type const *;
-    using Reference = Type &;
+    using Pointer = T *;
+    using Reference = T &;
     using ConstReference = const Type &;
-    using ColumnRef = Type &;
-    using ConstColumnRef = const Type &;
+    using ColumnRef = Reference;
+    using ConstColumnRef = ConstReference;
+    using TData = Type;
+    using RefData = Type &;
+    using ConstRefData = const Type &;
 
-    static constexpr TSize Num = 3;
+    constexpr Matrix() noexcept {}
+    constexpr Matrix(Type a) noexcept : _data{a} {}
+    constexpr Matrix(const Matrix &v) noexcept : _data{v._data} {}
+    constexpr Matrix(Matrix &&v) noexcept : _data{v._data} {}
 
-    Matrix() noexcept
-    {}
-
-    Matrix(T x, T y, T z) noexcept :
-        _data{x,y,z}
-    {}
-
-    Matrix(const T (&t)[3]) noexcept :
-        _data{t[0],t[1],t[2]}
-    {}
-
-    Matrix(const Matrix &m) noexcept :
-        _data{m[0],m[1],m[2]}
-    {}
-
-    Matrix(Matrix &&m) noexcept :
-        _data{m[0],m[1],m[2]}
-    {}
-
-    Matrix &operator=(const Matrix &rhs)
-    {
-        _data[0] = rhs._data[0];
-        _data[1] = rhs._data[1];
-        _data[2] = rhs._data[2];
-        return *this;
-    }
-
-    Matrix &operator=(Matrix &&rhs)
-    {
-        _data[0] = rhs._data[0];
-        _data[1] = rhs._data[1];
-        _data[2] = rhs._data[2];
-        return *this;
-    }
-
-    Reference operator[](const TSize pos)
-    {
-        assert(pos < Num);
-        return _data[pos];
-    }
-
-    ConstReference operator[](const TSize pos) const
-    {
-        assert(pos < Num);
-        return _data[pos];
-    }
-
-    constexpr auto rows() const noexcept
-    {
-        return 1;
-    }
-
-    constexpr auto size() const noexcept
-    {
-        return Num;
-    }
-
-    constexpr auto columns() const noexcept
-    {
-        return Num;
-    }
-
-    inline ConstReference x() const noexcept
-    {
-        return _data[0];
-    }
-
-    inline ConstReference y() const noexcept
-    {
-        return _data[1];
-    }
-
-    inline ConstReference z() const noexcept
-    {
-        return _data[2];
-    }
-
-    inline Reference x() noexcept
-    {
-        return _data[0];
-    }
-
-    inline Reference y() noexcept
-    {
-        return _data[1];
-    }
-
-    inline Reference z() noexcept
-    {
-        return _data[2];
-    }
-
-    inline explicit operator auto() {return _data;}
-
-    T norm()
-    {
-        return std::sqrt(_data[0]*_data[0] + _data[1]*_data[1] + _data[2]*_data[2]);
-    }
-
-private:
-    T _data[Num];
-};
-
-
-//Vector2D
-template<typename T>
-struct Matrix<T,1,2>
-{
-    using Type = T;
-    using Pointer = Type*;
-    using ConstPointer = Type const *;
-    using Reference = Type &;
-    using ConstReference = const Type &;
-    using ColumnRef = Type &;
-    using ConstColumnRef = const Type &;
-
-    static constexpr TSize Num = 2;
-
-    Matrix() noexcept
-    {}
-
-    Matrix(T x, T y) noexcept :
-        _data{x,y}
-    {}
-
-    Matrix(const T (&t)[2]) noexcept :
-        _data{t[0],t[1]}
-    {}
-
-    Matrix(const Matrix &m) noexcept :
-        _data{m[0],m[1]}
-    {}
-
-    Matrix(Matrix &&m) noexcept :
-        _data{m[0],m[1]}
-    {}
-
-    Matrix &operator=(const Matrix &rhs)
-    {
-        _data[0] = rhs._data[0];
-        _data[1] = rhs._data[1];
-        return *this;
-    }
-
-    Matrix &operator=(Matrix &&rhs)
-    {
-        _data[0] = rhs._data[0];
-        _data[1] = rhs._data[1];
-        return *this;
-    }
-
-    Reference operator[](const TSize pos)
-    {
-        assert(pos < Num);
-        return _data[pos];
-    }
-
-    ConstReference operator[](TSize pos) const
-    {
-        assert(pos < Num);
-        return _data[pos];
-    }
-
-    constexpr auto rows() const noexcept
-    {
-        return 1;
-    }
-
-    constexpr auto size() const noexcept
-    {
-        return Num;
-    }
-
-    constexpr auto columns() const noexcept
-    {
-        return Num;
-    }
-
-    inline ConstReference x() const noexcept
-    {
-        return _data[0];
-    }
-
-    inline ConstReference y() const noexcept
-    {
-        return _data[1];
-    }
-
-    inline Reference x() noexcept
-    {
-        return _data[0];
-    }
-
-    inline Reference y() noexcept
-    {
-        return _data[1];
-    }
-
-    T norm()
-    {
-        return std::sqrt(_data[0]*_data[0] + _data[1]*_data[1]);
-    }
-
-    inline explicit operator auto() {return _data;}
-
-private:
-    T _data[Num];
-};
-
-template<typename T>
-struct Matrix<T,1,1> //LoL
-{
-    using Type = T;
-    using Pointer = Type*;
-    using ConstPointer = Type const *;
-    using Reference = Type &;
-    using ConstReference = const Type &;
-    using ColumnRef = Type &;
-    using ConstColumnRef = const Type &;
-
-    Matrix() noexcept
-    {}
-
-    Matrix(T x) noexcept :
-        _data(x)
-    {}
-
-    Matrix &operator=(Matrix rhs)
-    {
+    Matrix &operator=(const Matrix &rhs) noexcept {
         _data = rhs._data;
-
         return *this;
     }
 
-    inline operator T() const
-    {
-        return _data;
+    Matrix &operator=(Matrix &&rhs) noexcept {
+        _data = rhs._data;
+        return *this;
     }
 
-private:
-    T _data;
+    constexpr auto size() const noexcept { return Size; }
+    constexpr TSize rows() const noexcept { return Rows; }
+    constexpr TSize columns() const noexcept { return Columns; }
+
+    auto length() const noexcept { return _data; }
+    void unit() const noexcept
+    {
+        auto k = T(1) / length();
+        _data *= k;
+    }
+
+    operator RefData() { return _data; }
+    operator ConstRefData() const { return _data; }
+
+    // Math operations
+    Matrix operator-() const {
+        Matrix newOne;
+        newOne._data = -_data;
+        return newOne;
+    }
+    Matrix &operator-=(Matrix m) {
+        _data -= m._data;
+        return *this;
+    }
+    Matrix &operator+=(Matrix m) {
+        _data += m._data;
+        return *this;
+    }
+    Matrix &operator*=(Matrix m) {
+        _data *= m._data;
+        return *this;
+    }
+    Matrix &operator/=(Matrix m) {
+        _data /= m._data;
+        return *this;
+    }
+
+    Matrix &operator-=(T m) {
+        _data -= m;
+        return *this;
+    }
+    Matrix &operator+=(T m) {
+        _data += m;
+        return *this;
+    }
+    Matrix &operator*=(T m) {
+        _data *= m;
+        return *this;
+    }
+    Matrix &operator/=(T m) {
+        _data /= m;
+        return *this;
+    }
+
+protected:
+    TData _data;
 };
 
+template <typename T, TSize Dim>
+using Vector = Matrix<T, 1, Dim>;
+template <typename T>
+using Vector2D = Matrix<T, 1, 2>;
+template <typename T>
+using Vector3D = Matrix<T, 1, 3>;
+template <typename T>
+using Vector4D = Matrix<T, 1, 4>;
 
-template<typename T, TSize Num>
-using Vector = Matrix<T,1,Num>;
-
-template<typename T>
-using Vector4D = Vector<T,4>;
-
-template<typename T>
-using Vector3D = Vector<T,3>;
-
-template<typename T>
-using Vector2D = Vector<T,2>;
-
-
-
-template<typename T, TSize Row, TSize Col>
-constexpr bool isSquare(const Matrix<T,Row,Col> &)
+template <typename T, TSize Row, TSize Col>
+bool operator==(Matrix<T, Row, Col> lhs, Matrix<T, Row, Col> rhs)
 {
-    return Col == Row;
-}
-
-template<typename T, TSize Row, TSize Col>
-constexpr bool isVector(const Matrix<T,Row,Col> &)
-{
-    return Row == 1;
-}
-
-template<typename T, TSize Row, TSize Col>
-constexpr bool isSingular(const Matrix<T,Row,Col> &i)
-{
-    return Col == 0 || Row == 0;
-}
-
-
-//Comparsion
-
-template<typename T, TSize Row, TSize Col>
-bool operator==(Matrix<T,Row,Col> lhs, Matrix<T,Row,Col> rhs)
-{
-    for(TSize i=Row;i--;)
-        for(TSize j=Col;j--;)
-            if(lhs[i][j] != rhs[i][j])
+    for (TSize i = Row; i--;)
+        for (TSize j = Col; j--;)
+            if (lhs[i][j] != rhs[i][j])
                 return false;
     return true;
 }
 
-template<typename T, TSize Num>
-bool operator==(Vector<T,Num> lhs, Vector<T,Num> rhs)
+template <typename T, TSize Dim>
+bool operator==(Matrix<T, 1, Dim> lhs, Matrix<T, 1, Dim> rhs)
 {
-    for(TSize i=Num;i--;)
-        if(lhs[i] != rhs[i])
+    for (TSize i = Dim; i--;)
+        if (lhs[i] != rhs[i])
             return false;
     return true;
 }
 
-template<typename T, TSize Row, TSize Col>
-bool operator!=(Matrix<T,Row,Col> lhs, Matrix<T,Row,Col> rhs)
+template <typename T, TSize Row, TSize Col>
+bool operator!=(const Matrix<T, Row, Col> lhs, const Matrix<T, Row, Col> rhs)
 {
-    for(TSize i=Row;i--;)
-        for(TSize j=Col;j--;)
-            if(lhs[i][j] != rhs[i][j])
-                return true;
-    return false;
-}
-
-template<typename T, TSize Num>
-bool operator!=(Vector<T,Num> lhs, Vector<T,Num> rhs)
-{
-    for(TSize i=Num;i--;)
-        if(lhs[i] != rhs[i])
-            return true;
-    return false;
-}
-
-template<typename T, TSize Row, TSize Col>
-bool operator<=(Matrix<T,Row,Col> lhs, Matrix<T,Row,Col> rhs)
-{
-    for(TSize i=Row;i--;)
-        for(TSize j=Col;j--;)
-            if(!(lhs[i][j] <= rhs[i][j]))
+    for (TSize i = Row; i--;)
+        for (TSize j = Col; j--;)
+            if (lhs[i][j] == rhs[i][j])
                 return false;
     return true;
 }
 
-template<typename T, TSize Num>
-bool operator>=(Vector<T,Num> lhs, Vector<T,Num> rhs)
+template <typename T, TSize Dim>
+bool operator!=(Matrix<T, 1, Dim> lhs, Matrix<T, 1, Dim> rhs)
 {
-    for(TSize i=Num;i--;)
-        if(!(lhs[i] >= rhs[i]))
+    for (TSize i = Dim; i--;)
+        if (lhs[i] == rhs[i])
             return false;
     return true;
 }
 
-template<typename T, TSize Row, TSize Col>
-bool operator<(Matrix<T,Row,Col> lhs, Matrix<T,Row,Col> rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> norm(Matrix<T, Rows, Cols> matrix, T l = 1.)
 {
-    for(TSize i=Row;i--;)
-        for(TSize j=Col;j--;)
-            if(!(lhs[i][j] < rhs[i][j]))
-                return false;
-    return true;
-}
-
-template<typename T, TSize Num>
-bool operator>(Vector<T,Num> lhs, Vector<T,Num> rhs)
-{
-    for(TSize i=Num;i--;)
-        if(!(lhs[i] > rhs[i]))
-            return false;
-    return true;
-}
-
-//Arithmetical methods
-//unary op
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator-(const Matrix<T,Rows,Cols> rhs)
-{
-    Matrix<T,Rows,Cols> r;
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; r[i][j] = -rhs[i][j]);
-    return r;
-}
-
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator*=(Matrix<T,Rows,Cols> &lhs, const Matrix<T,Rows,Cols> rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] *= rhs[i][j]);
-    return lhs;
-}
-
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator+=(Matrix<T,Rows,Cols> &lhs, const Matrix<T,Rows,Cols> rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] += rhs[i][j]);
-    return lhs;
-}
-
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator-=(Matrix<T,Rows,Cols> &lhs, const Matrix<T,Rows,Cols> rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] -= rhs[i][j]);
-    return lhs;
-}
-
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator/=(Matrix<T,Rows,Cols> &lhs, const Matrix<T,Rows,Cols> rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] /= rhs[i][j]);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator*=(Matrix<T,Rows,Cols> &lhs, const U rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] *= rhs);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator+=(Matrix<T,Rows,Cols> &lhs, const U rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] += rhs);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator-=(Matrix<T,Rows,Cols> &lhs, const U rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] -= rhs);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> &operator/=(Matrix<T,Rows,Cols> &lhs, const U rhs)
-{
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; lhs[i][j] /= rhs);
-    return lhs;
-}
-
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> normalize(Matrix<T,Rows,Cols> matrix)
-{
-    matrix = (matrix)*(1./matrix.norm());
+    matrix = matrix * (l / matrix.length());
     return matrix;
 }
 
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> normalize(Matrix<T,Rows,Cols> matrix, U l)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator*(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    matrix = (matrix)*(l/matrix.norm());
-    return matrix;
+    return lhs *= rhs;
 }
 
-//binary op
-
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator*(Matrix<T,Rows,Cols> lhs, const Matrix<T,Rows,Cols> rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator+(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs*=rhs;
+    return lhs += rhs;
 }
 
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator+(Matrix<T,Rows,Cols> lhs, const Matrix<T,Rows,Cols> rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator-(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs+=rhs;
+    return lhs -= rhs;
 }
 
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator-(Matrix<T,Rows,Cols> lhs, const Matrix<T,Rows,Cols> rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator/(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs-=rhs;
+    return lhs /= rhs;
 }
 
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator/(Matrix<T,Rows,Cols> lhs, const Matrix<T,Rows,Cols> rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator%(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs/=rhs;
+    return lhs %= rhs;
 }
 
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator*(Matrix<T,Rows,Cols> lhs, const U rhs)
+//bitwise
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator^(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs*=rhs;
+    return lhs ^= rhs;
 }
 
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator+(Matrix<T,Rows,Cols> lhs, const U rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator&(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs+=rhs;
+    return lhs &= rhs;
 }
 
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator-(Matrix<T,Rows,Cols> lhs, const U rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator|(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs-=rhs;
+    return lhs |= rhs;
 }
 
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator/(Matrix<T,Rows,Cols> lhs, const U rhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator>>=(Matrix<T, Rows, Cols> lhs,
+                                const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs/=rhs;
+    return lhs >>= rhs;
 }
 
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator*(const U rhs, Matrix<T,Rows,Cols> lhs)
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator<<=(Matrix<T, Rows, Cols> lhs,
+                                  const Matrix<T, Rows, Cols> rhs)
 {
-    return lhs*=rhs;
-}
-
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator+(const U rhs, Matrix<T,Rows,Cols> lhs)
-{
-    return lhs+=rhs;
-}
-
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator-(const U rhs, Matrix<T,Rows,Cols> lhs)
-{
-    return lhs-=rhs;
-}
-
-template<typename T, typename U, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> operator/(const U rhs, Matrix<T,Rows,Cols> lhs)
-{
-    return lhs/=rhs;
+    return lhs <<= rhs;
 }
 
 
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Cols,Rows> transpose(const Matrix<T,Rows,Cols> matrix) noexcept
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator*(Matrix<T, Rows, Cols> lhs, const U rhs)
 {
-    Matrix<T,Cols,Rows> result;
+    return lhs *= rhs;
+}
 
-    for(TSize i=Rows; i--;)
-        for(TSize j=Cols; j--; result[j][i] = matrix[i][j]);
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator+(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs += rhs;
+}
 
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator-(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs -= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator/(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs /= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator^(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs ^= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator&(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs &= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator|(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs |= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator>>=(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs >>= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator<<=(Matrix<T, Rows, Cols> lhs, const U rhs)
+{
+    return lhs <<= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator*(const U rhs, Matrix<T, Rows, Cols> lhs)
+{
+    return lhs *= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator+(const U rhs, Matrix<T, Rows, Cols> lhs)
+{
+    return lhs += rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator-(const U rhs, Matrix<T, Rows, Cols> lhs)
+{
+    return lhs -= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator/(const U rhs, Matrix<T, Rows, Cols> lhs)
+{
+    return lhs /= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator^(const U rhs, Matrix<T, Rows, Cols> lhs)
+{
+    return lhs ^= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator&(const U rhs, Matrix<T, Rows, Cols> lhs)
+{
+    return lhs &= rhs;
+}
+
+template <typename T, typename U, TSize Rows, TSize Cols>
+Matrix<T, Rows, Cols> operator|(const U rhs, Matrix<T, Rows, Cols> lhs)
+{
+    return lhs |= rhs;
+}
+
+
+template <typename T, TSize Cols>
+Vector<T, Cols>unit(const Vector<T, Cols> &vector) noexcept
+{
+    Vector<T, Cols> result = vector;
+    result.unit();
     return result;
 }
 
 
-template<typename T, TSize Dim, TSize LRow, TSize RCol>
-Matrix<T,LRow,RCol> dotProduct(const Matrix<T,LRow,Dim> lhs, const Matrix<T,Dim,RCol> rhs)
+template <typename T, TSize Cols>
+Matrix<T, Cols, 1> transpose(Vector<T, Cols> vector) noexcept
 {
-    Matrix<T,LRow,RCol> res;
+    Matrix<T, Cols, 1> result;
 
-    for(TSize i=LRow;i--;)
-        for(TSize j=RCol;j--;)
-            for(TSize k=Dim; k--; res[i][j] += lhs[i][k] * rhs[k][j]);
+    for (TSize i = Cols; i--; result[0][i] = vector[i]);
+
+    return result;
+}
+
+template <typename T, TSize Rows, TSize Cols>
+Matrix<T, Cols, Rows> transpose(const Matrix<T, Rows, Cols> &matrix) noexcept
+{
+    Matrix<T, Cols, Rows> result;
+
+    for (TSize i = Rows; i--;)
+        for (TSize j = Cols; j--; result[j][i] = matrix[i][j]);
+
+    return result;
+}
+
+template <typename T, TSize Dim, TSize LRow, TSize RCol>
+Matrix<T, LRow, RCol> dot(const Matrix<T, LRow, Dim> &lhs,
+                          const Matrix<T, Dim, RCol> &rhs)
+{
+    Matrix<T, LRow, RCol> res;
+
+    for (TSize i = LRow; i--;)
+        for (TSize j = RCol; j--;)
+            for (TSize k = Dim; k--; res[i][j] += lhs[i][k] * rhs[k][j]);
 
     return res;
 }
 
-template<typename T, TSize Num>
-Vector<T,Num> operator-(const Vector<T,Num> rhs)
+template <typename T, TSize Dim>
+T dot(const Matrix<T, 1, Dim> &lhs, const Matrix<T, Dim, 1> &rhs)
 {
-    Matrix<T,1,Num> r;
-    for(TSize i=Num; i--; r[i] = -(rhs[i]));
-    return r;
+    T res = {0};
+
+    for (TSize i = Dim; i--; res += lhs[i] * rhs[i][0]);
+
+    return res;
 }
 
-template<typename T, TSize Num>
-Vector<T,Num> &operator*=(Vector<T,Num> &lhs, Vector<T,Num> rhs)
+template <typename T, TSize Dim>
+Matrix<T, Dim, Dim> dot(const Matrix<T, Dim, 1> &lhs,
+                        const Matrix<T, 1, Dim> &rhs)
 {
-    for(TSize i=Num; i--; lhs[i] *= rhs[i]);
-    return lhs;
+    Matrix<T, Dim, Dim> res;
+
+    for (TSize i = Dim; i--;)
+        for (TSize j = Dim; j--;)
+            res[i][j] = lhs[i][0] * rhs[j];
+
+    return res;
 }
 
-template<typename T, TSize Num>
-Vector<T,Num> &operator+=(Vector<T,Num> &lhs, Vector<T,Num> rhs)
+//Just cuz.
+template <typename T, TSize Dim>
+T dot(const Vector<T,Dim> &lhs, const Vector<T,Dim> &rhs)
 {
-    for(TSize i=Num; i--; lhs[i] += rhs[i]);
-    return lhs;
+    T res = {0};
+
+    for (TSize i = Dim; i--; res += lhs[i] * rhs[i]);
+
+    return res;
 }
 
-template<typename T, TSize Num>
-Vector<T,Num> &operator-=(Vector<T,Num> &lhs, Vector<T,Num> rhs)
+template <typename T>
+T cross(const Vector<T, 2> &lhs, const Vector<T, 2> &rhs) //illegal
 {
-    for(TSize i=Num; i--; lhs[i] -= rhs[i]);
-    return lhs;
+    return lhs.x() * rhs.y() - lhs.y() * rhs.x();
 }
 
-template<typename T,  TSize Num>
-Vector<T,Num> &operator/=(Vector<T,Num> &lhs, Vector<T,Num> rhs)
+template <typename T>
+Vector3D<T> cross(const Vector3D<T> &lhs, const Vector3D<T> &rhs)
 {
-    for(TSize i=Num; i--; lhs[i] /= rhs[i]);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Num>
-Vector<T,Num> &operator*=(Vector<T,Num> &lhs,  U rhs)
-{
-    for(TSize i=Num; i--; lhs[i] *= rhs);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Num>
-Vector<T,Num> &operator+=(Vector<T,Num> &lhs, U rhs)
-{
-    for(TSize i=Num; i--; lhs[i] += rhs);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Num>
-Vector<T,Num> &operator-=(Vector<T,Num> &lhs, U rhs)
-{
-    for(TSize i=Num; i--; lhs[i] -= rhs);
-    return lhs;
-}
-
-template<typename T, typename U, TSize Num>
-Vector<T,Num> &operator/=(Vector<T,Num> &lhs, U rhs)
-{
-    for(TSize i=Num; i--; lhs[i] /= rhs);
-    return lhs;
-}
-
-template<typename T, TSize Dim>
-T dotProduct(Vector<T,Dim> lhs, Vector<T,Dim> rhs)
-{
-    T ret = T();
-    for(TSize i=Dim;i--;ret+=lhs[i]*rhs[i]);
-    return ret;
-}
-
-template<typename T, TSize size>
-auto projection(Vector<T,size> &lhs, Vector<T,size> &rhs)
-{
-    return (lhs*rhs)/(rhs*rhs)*rhs;
-}
-
-//TODO: Other Binary Functions
-
-
-//TODO: Other specializations
-
-template<typename T>
-T crossProduct(const Vector<T,2> lhs, const Vector<T,2> rhs)
-{
-    return lhs.x()*rhs.y()-lhs.y()*rhs.x();
-}
-
-template<typename T>
-Vector<T,3> crossProduct(const Vector<T,3> lhs, const Vector<T,3> rhs)
-{
-    Vector<T,3> result
-    (
-        lhs.y()*rhs.z() - lhs.z()*rhs.y(),
-        lhs.z()*rhs.x() - lhs.x()*rhs.z(),
-        lhs.x()*rhs.y() - lhs.y()*rhs.x()
-    );
+    Vector3D<T> result{lhs.y() * rhs.z() - lhs.z() * rhs.y(),
+                       lhs.z() * rhs.x() - lhs.x() * rhs.z(),
+                       lhs.x() * rhs.y() - lhs.y() * rhs.x()};
     return result;
 }
 
-
-//TODO: ToDo
-template<typename T, TSize Row, TSize Col>
-Matrix<T,Row,Col> inverse(Matrix<T,Row,Col> m)
+template <typename T, TSize dim>
+auto projection(const Vector<T, dim> &of, const Vector<T, dim> &onto)
 {
-    //TODO: Invert
+    return (dot(of, onto) / onto.length()) * onto;
 }
 
-template<typename T, TSize Row, TSize Col, TSize OldRow, TSize OldCol>
-Matrix<T,Row,Col> submatrix(const Matrix<T,OldRow,OldCol> m , TSize ro, TSize co)
+template <typename T, TSize R, TSize C>
+Matrix<T, R - 1, C - 1> submatrix(const Matrix<T, R, C> &m, TSize subRow,
+                                  TSize subCol)
 {
-    static_assert(Row < OldRow && Col < OldCol, "Submatrix dim can't be greater than parent matrix dim");
-    assert(Row + ro < OldRow && Col + co < OldCol && "ARRRRRR"); //TODO: Better description
+    assert(subRow < R && subCol < C && "Out of Range");
 
-    Matrix<T,Row,Col> result;
-
-    for(TSize i=Row;i--;)
-        for(TSize j=Col;j--;result[i][j] = m[i+ro][j+co]);
+    Matrix<T, R - 1, C - 1> result;
+    TSize si = R - 1, sj;
+    for (TSize i = R; i-- > 0;)
+        if (i != subRow) {
+            sj = C - 1;
+            --si;
+            for (TSize j = C; j-- > 0;)
+                if (j != subCol)
+                    result[si][--sj] = m[i][j];
+        }
 
     return result;
 }
 
-template<typename T, TSize Size, TSize OldSize>
-Vector<T,Size> submatrix(const Vector<T,OldSize> v, TSize start) //TODO: Better name needed
+template <typename T>
+T submatrix(const Matrix<T, 2, 2> &m, TSize subRow, TSize subCol)
 {
-    static_assert(Size < OldSize, "Subvector dim can't be greate than parent dim");
-    assert(Size+start < OldSize && "ARRRRRR"); //TODO: Better description
-    Vector<T,Size> result;
+    assert(subRow < 2 && subCol < 2 && "Out of Range");
 
-    for(TSize i=Size;i--;)
-        result[i] = v[i+start];
+    if (subRow == 0)
+        if (subCol == 0)
+            return m[1][1];
+        else
+            return m[1][0];
+    else if (subCol == 0)
+        return m[0][1];
+    else
+        return m[0][0];
+}
+
+template <typename T>
+T determinant(const Matrix<T, 1, 1> &m)
+{
+    return static_cast<const T &>(m);
+}
+
+template <typename T> T determinant(const T &m) { return T(m); }
+
+template <typename T>
+T determinant(const Matrix<T, 2, 2> &m)
+{
+    return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+}
+
+template <typename T>
+T determinant(const Matrix<T, 3, 3> &m)
+{
+    return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+           m[0][1] * (m[1][0] * m[2][2] - m[2][0] * m[1][2]) +
+           m[0][2] * (m[1][0] * m[2][1] - m[2][0] * m[1][1]);
+}
+
+template <typename T, TSize Dim>
+T determinant(const Matrix<T, Dim, Dim> &m)
+{
+    signed char o = 1;
+    T result = {0};
+
+    for (TSize i = 0; i < Dim; ++i) {
+        result += o * m[0][i] * determinant(submatrix(m, 0, i));
+        o *= -1;
+    }
+
     return result;
 }
 
-template<typename T, TSize Size, TSize OldSize>
-constexpr auto subvector = &submatrix<T,Size,OldSize>; //function alias
-
-template<typename T, TSize Rows, TSize Cols>
-Matrix<T,Rows,Cols> deteminant(const Matrix<T,Rows,Cols> &matrix) noexcept
+template <typename T, TSize Dim>
+Matrix<T, Dim, Dim> minor(const Matrix<T, Dim, Dim> &m)
 {
-    static_assert(Rows == Cols, "Matrix must be squart");
+    Matrix<T, Dim, Dim> result;
 
-    Matrix<T,Rows,Cols> m;
+    for (TSize i = Dim; i--;)
+        for (TSize j = Dim; j--; result[i][j] = determinant(submatrix(m, i, j)));
+
+    return result;
+}
+
+template <typename T, TSize Dim>
+Matrix<T, Dim, Dim> invert(const Matrix<T, Dim, Dim> &d,
+                           bool *correctness = nullptr)
+{
+    constexpr auto sing = [](TSize i, TSize j) -> T
+    {
+        auto s = i + j;
+        if (s % 2 == 0)
+            return 1;
+        else
+            return -1;
+    };
+
+    Matrix<T, Dim, Dim> result;
+    /// A^-1 = (1/|A|) * transpose(A)
+    const auto det = determinant(d);
+    if (correctness)
+    {
+        if (det == 0)
+        {
+            *correctness = false;
+            return result; // NO
+        }
+        else
+            *correctness = true;
+    }
+
+    result = minor(d);
+
+    for (TSize i = 0; i < result.rows(); ++i)
+        for (TSize j = 0; j < result.columns(); j++)
+            result[i][j] *= sing(i, j);
+
+    result = transpose(result);
+    result /= det;
+    return result;
 }
 
 

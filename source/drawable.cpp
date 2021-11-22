@@ -28,6 +28,11 @@ Drawable::~Drawable()
 
 const std::list<Drawable *> &Drawable::getRegister() {return _drawableRegister;}
 
+void Drawable::sort()
+{
+    _drawableRegister.sort();
+}
+
 Sprite::Sprite(PTexture texture, Vector2D pos) :
       Drawable(pos.x(),pos.y()),
       tex(texture)
@@ -39,9 +44,9 @@ Sprite::~Sprite()
 void Sprite::update()
 {}
 
-bool Sprite::operator < (const Sprite &s) const
+bool Drawable::operator < (const Drawable &s) const
 {
-    return dist > s.dist;
+    return dist < s.dist;
 }
 
 uint32_t Sprite::get(TSize i, TSize j, TSize spriteScreenSize) const

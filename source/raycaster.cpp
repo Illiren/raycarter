@@ -4,22 +4,22 @@
 
 
 const char RayCarter::mapdata[] =
-    "0000000000000000"\
-    "0              0"\
-    "0     444      0"\
-    "0     4        0"\
-    "0     4        0"\
-    "0     3        0"\
-    "0   44444      0"\
-    "0   4   2      0"\
-    "0   4   2      0"\
-    "0   4   2      0"\
-    "0       2      0"\
-    "05555   2      0"\
-    "0       2      0"\
-    "0    2222      0"\
-    "0              0"\
-    "0000000000000000";
+                "1111111111111111"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "3              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1              1"\
+                "1111111111111111";
 
 
 
@@ -78,16 +78,62 @@ Map &RayCarter::map() {return _map;}
 void RayCarter::draw()
 {
     //screen.clear(Color(100,100,100));
-
     const size_t mapRectW = _mapSize.x()/_map.width();
     const size_t mapRectH = _mapSize.y()/_map.height();
     std::vector<float> depthBuffer(_width, 1e3);
 
     Point2D org = {mapRectW,_height-_guiHeight};
 
-    screen.drawRectangle(org,_width,_guiHeight,Color(150,150,150));
+    const Texture &floor = _map.getTexture(1);
+    auto flw = floor.w;
+    auto flh = floor.h;
+    const Texture &ceiling = _map.getTexture(1);
 
-    //#pragma omp parallel for collapse(2)
+    float dirX = std::cos(_camera.direction),
+          dirY = std::sin(_camera.direction);
+
+    constexpr float PX = 0,
+                    PY = 0.56;
+
+    const auto pos = _player.position();
+    const Vector2D rayDir0(dirX + PY*dirY, dirY - PY*dirX);
+    const Vector2D rayDir1(dirX - PY*dirY, dirY + PY*dirX);
+    const Math::Vector2D<int> texsize(floor.w, floor.h);
+    auto diff =  (rayDir1 - rayDir0)/_width;
+
+    for(TSize i=_height/2+1; i<_height;++i)
+    {
+        float posZ = _height/2;
+        float rowDistance = posZ/(i-_height/2);
+        Vector2D floorStep = rowDistance * diff;
+        Vector2D floorPos = pos + rayDir0 * rowDistance;
+
+#ifndef DEBUG
+#pragma omp parallel for
+#endif
+        for(TSize j=0; j<_width; ++j)
+        {
+            Vector2D floorjpos = floorPos + (floorStep*j);
+            Math::Vector2D<int> cellTexPos = floorjpos;
+            int tx = (int)(texsize.x() * (floorjpos.x() - cellTexPos.x())) & (texsize.x() - 1);
+            int ty = (int)(texsize.y() * (floorjpos.y() - cellTexPos.y())) & (texsize.y() - 1);
+
+            //Math::Vector2D<int> t = static_cast<Math::Vector2D<int>>(static_cast<Vector2D>(texsize)*(floorjpos-static_cast<Vector2D>(cellTexPos))) & (texsize-1);
+
+            auto color = floor.get(tx,ty);
+            color = (color>>1) & 8355711;// darkness
+            screen.drawPoint({j,i},color);
+            color = ceiling.get(tx,ty);
+            screen.drawPoint({j,_height-i-1},color);
+        }
+    }
+
+
+    screen.drawRectangle(org,_width,_guiHeight,Color(150,150,150,0));
+
+#ifndef DEBUG
+#pragma omp parallel for collapse(2)
+#endif
     for(TSize j=0; j<_map.height(); ++j)
         for(TSize i=0; i<_map.width(); ++i)
         {
@@ -101,9 +147,10 @@ void RayCarter::draw()
 
             screen.drawRectangle({rectX,rectY},mapRectW,mapRectH,Color::Black);
         }
-
-//#pragma omp parallel for
-    for(size_t i=0;i<_width;++i)
+#ifndef DEBUG
+#pragma omp parallel for
+#endif
+    for(size_t i=0;i<_width;++i) // Wall Casting
     {
         const float angle = _camera.direction - _camera.fov/2 + _camera.fov*i/float(_width);
         const auto acos = std::cos(angle);
@@ -118,7 +165,7 @@ void RayCarter::draw()
             const TSize pixY = static_cast<TSize>(cy*mapRectH);
 
             const auto mapPos = static_cast<int>(cx) + static_cast<int>(cy) * static_cast<int>(_map.width());
-            screen[pixX+(_height-pixY-1)*screen.width()] = Color::White;//Color(160,160,160,0);
+            screen.drawPoint({pixX, (_height-pixY-1)}, Color::White);
 
             if(_map[mapPos] != ' ') // if something on the way
             {
@@ -133,26 +180,9 @@ void RayCarter::draw()
 
                 TArray<uint32_t> column = tex.getScaledColumn(xtex, columnH);
 
-                TSize wallTop = _height/2 - columnH/2;
-                TSize wallBottom = wallTop+columnH;
-
-                for(TSize j=0;j<_height;++j)
-                {
-                    if(j >= _height-_guiHeight) break;
-                    if(j < wallTop)
-                    {
-                        Color color(150*(j/(float)_height*2), 50 + 150 * (j/(float)_height*2), 200);
-                        screen.drawPoint({i,j},color);
-                    }
-                    else if((j >= wallBottom) && (j < _height-_guiHeight))
-                    {
-                        Color color(120 - 70 * ((_height - j)/ (float)_height * 2), 150 - 50 * ((_height - j)/(float)_height*2), 20);
-                        screen.drawPoint({i,j},color);
-                    }
-                }
                 for(TSize j=0;j<columnH;++j)
                 {
-                    TSize py = j + screen.height()/2 - columnH/2;                    
+                    TSize py = j + _height/2 - columnH/2;
                     if(py>=0 && py < _height-_guiHeight)
                     {
                         Color c(column[j]);
@@ -166,17 +196,16 @@ void RayCarter::draw()
         }        
     }
 
-
-
     const TSize playerPosX = _camera.origin.x()*mapRectW-2;
     const TSize playerPosY = _height-_camera.origin.y()*mapRectH-2;
     screen.drawRectangle({playerPosX,playerPosY},5,5,Color::Black);
 
     auto &drawList = Drawable::getRegister();
+    Drawable::sort();
 
     for(auto &drawable : drawList)
     {
-        drawable->updateDist(_camera.origin.x(),_camera.origin.y());
+        //drawable->updateDist(_camera.origin.x(),_camera.origin.y());
         Sprite *n = dynamic_cast<Sprite*>(drawable);
         if(n)
             drawSprite(*n,depthBuffer);
@@ -199,7 +228,9 @@ void RayCarter::drawSprite(const Sprite &sprite, const TArray<float> &depthBuffe
     int hOffset = (spriteDir - _camera.direction)*(_width)/(_camera.fov) + (_width)/2 - spriteScreenSize/2;
     int vOffset = _height/2 - spriteScreenSize/2;
 
-    //#pragma omp parallel for
+#ifndef DEBUG
+#pragma omp parallel for
+#endif
     for(TSize i=0;i<spriteScreenSize;++i)
     {
         if(hOffset+int(i)<0 || hOffset+i >= _width) continue;
@@ -304,6 +335,11 @@ void RayCarter::update(TReal lag)
     auto list = GameObject::getRegister();
     for(const auto &o : list)
         o->update(lag);
+
+    auto &drawList = Drawable::getRegister();
+    for(auto &drawable : drawList)
+        drawable->updateDist(_camera.origin.x(),_camera.origin.y());
+
     //_player.update(lag);
 }
 

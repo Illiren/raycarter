@@ -13,3 +13,64 @@ GameObject::~GameObject()
 {
     _objectRegister.remove(this);
 }
+
+NActor *ActorComponent::getOwner() const noexcept {return owner;}
+
+
+FRectangle2D NActor::getCollisionBody() const noexcept
+{
+    Rectangle2D<TReal> rect;
+    rect.topleft.x() = position().x() - 0.4f;
+    rect.topleft.y() = position().y() - 0.4f;
+
+    rect.botright.x() = position().x() + 0.4f;
+    rect.botright.y() = position().y() + 0.4f;
+
+    return rect;
+}
+
+
+MovementComponent::MovementComponent(NActor *parent) :
+      ActorComponent(parent)
+{}
+
+void MovementComponent::update(TReal dt)
+{
+    TReal &dir = owner->direction;
+    Vector2D &pos = owner->position;
+    Location &map = *owner->location;
+    dir += float(turn)*maxSpeed*dt;
+
+    constexpr float length=0.5;
+    const auto cosa = std::cos(dir);
+    const auto sina = std::sin(dir);
+
+    float nx = pos.x() + cosa*speed*runSpeedMultiplier*dt;
+    float ny = pos.y() + sina*speed*runSpeedMultiplier*dt;
+
+    float dx = length*cosa+nx;
+    float dy = length*sina+ny;
+
+    if(int(nx) >= 0 && int(nx) < 16 && int(ny) >= 0 && int(ny)< 16)
+    {
+        const size_t posX = size_t(dx)+size_t(pos.y())*map.width;
+        const size_t posY = size_t(pos.x())+size_t(dy)*map.width;
+
+        if(map[posX] == ' ')
+            pos.x() = nx;
+        if(map[posY] == ' ')
+            pos.y() = ny;
+    }
+}
+
+void CameraComponent::update(TReal dt)
+{
+    camera.direction = owner->direction;
+    camera.origin    = owner->position;
+}
+
+
+void SpriteComponent::update(TReal dt)
+{
+    sprite.pos = owner->position;
+}

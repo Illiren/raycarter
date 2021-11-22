@@ -144,9 +144,9 @@ template<typename T, TSize Dim>
 inline constexpr bool intersect(const Circle<T,Dim> &c, const Ray<T,Dim> &l) noexcept
 {
     auto oc = l.origin - c.origin;
-    T a = Math::dotProduct(l.direction,l.direction);
-    T b = Math::dotProduct(oc,l.direction);
-    T e = Math::dotProduct(oc,oc) - c.radius * c.radius;
+    T a = Math::dot(l.direction,l.direction);
+    T b = Math::dot(oc,l.direction);
+    T e = Math::dot(oc,oc) - c.radius * c.radius;
     T d = b*b-a*e;
 
     if(d>0) return true;

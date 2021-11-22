@@ -39,4 +39,5 @@ protected:
     virtual void input() = 0;
     virtual void render() = 0;
     virtual void update(TReal lag) = 0;
+    std::function<void ()> printEvent;
 };

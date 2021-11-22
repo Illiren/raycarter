@@ -72,6 +72,7 @@ void GameLoop::run()
         {
             cout << "Sleeping for " << freeTime.count() << '\n';
             cout << "FPS: " << fps << endl;
+            if(printEvent) printEvent();
             _fps = fps;
             fps = 0;
             time = 0;

@@ -8,6 +8,11 @@ Player::Player(Camera &c, Map &m) :
       map(m)
 {}
 
+Player::~Player()
+{
+    Actor::~Actor();
+}
+
 void Player::update(TReal dt)
 {
     Actor::update(dt);
@@ -57,7 +62,7 @@ void Player::collision(Actor *another)
     auto apos = another->position();
     auto ppos = position();
     Vector2D dir = {ppos.x() - apos.x(), ppos.y() - apos.y()};
-    auto l = std::sqrt(dir.norm());
+    auto l = std::sqrt(dir.length());
     dir *= 1/l;
 
     camera.origin.x() += dir.x();

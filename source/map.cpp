@@ -55,3 +55,72 @@ void Map::addTexture(PTexture txt)
     n_textureDB.push_back(*t);
 }
 
+
+Location::Location()
+{
+
+}
+
+
+NActor *Location::trace(Vector2D origin, TReal direction, TReal d, NActor *actorToIgnore)
+{
+    const auto acos = std::cos(direction);
+    const auto asin = std::sin(direction);
+
+    for(float t = 0; t <= d; t+=.01f)
+    {
+        const float cx = origin.x() + t*acos;
+        const float cy = origin.y() + t*asin;
+
+        auto &list = GameObject::getRegister();
+        for(auto &o : list)
+        {
+            auto actor = dynamic_cast<class NActor*>(o);
+            if(actor == actorToIgnore) continue;
+
+            if(intersect({cx,cy}, actor->getCollisionBody()))
+            {
+                return actor;
+            }
+        }
+    }
+    return nullptr;
+}
+
+const char &Location::operator [](TSize pos) const
+{
+    return map[pos];
+}
+
+const Texture &Location::getTexture(TSize texId) const
+{
+    return textureDB[texId];
+}
+
+void Location::addTexture(PTexture txt)
+{
+    auto t = txt.lock();
+    textureDB.push_back(*t);
+}
+
+void Location::addActor(NActor *actor)
+{
+    assert(actor != nullptr && "Actor is invalid");
+    actor->location = this;
+    actorList.push_back(actor);
+}
+
+void Location::removeActor(NActor *actor)
+{
+    assert(actor != nullptr && "Actor is invalid");
+    actorList.remove(actor);
+    actor->location = nullptr;
+}
+
+void Location::setMap(const char m[], TSize w, TSize h)
+{
+    map.resize(w*h);
+    for(auto i=w;i--;)
+        for(auto j=h;j--;)
+            map[i+w*j] = m[i+w*j];
+}

@@ -4,12 +4,8 @@ Window::Window(Rectangle2D<TSize> rect, Window *parent) :
       _parent(parent),
       _origin(rect.topleft)
 {
-    assert(rect.botright.x() > _origin.x() &&
-           rect.botright.y() > _origin.y() &&
-           "Something is wrong"); //TODO: Assert message
-
-    _width = rect.botright.x() - _origin.x();
-    _height = rect.botright.y() - _origin.y();
+    _width = rect.width();
+    _height = rect.height();
 }
 
 TSize Window::width() const {return _width;}
