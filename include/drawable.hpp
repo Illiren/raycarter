@@ -9,19 +9,17 @@ class Drawable
 {
 public:
     Drawable();
-    Drawable(TReal x, TReal y);
+    Drawable(Vector2D position);
     virtual ~Drawable();
     virtual void update() = 0;
     bool operator<(const Drawable &s) const;
     static const std::list<Drawable*> &getRegister();
     static void sort();
 
-    void updateDist(TReal x, TReal y);
-
-    TReal dist;
-    TReal x,y;
+    void updateDist(Vector2D relPos);
 
     Vector2D pos;
+    TReal dist;    
 
 private:
     static std::list<Drawable*> _drawableRegister;

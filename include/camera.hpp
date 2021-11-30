@@ -17,7 +17,7 @@ struct Camera
 
 
 class CameraComponent;
-class NActor;
+class Actor;
 
 class Viewport : public Window
 {
@@ -26,21 +26,29 @@ public:
 
     void setCamera(CameraComponent *cam);
 
+    Math::Vector2D<TSize> mapSize;
+    TSize fps = 0;
+
+    //GUI
+    Texture hudWeapon;
+    Texture playerFace;
 
 private:
     //CameraComponent *camera = nullptr;
     Camera *camera = nullptr;
-    NActor *actor = nullptr;
+    Actor *actor = nullptr;
     TArray<float> depthBuffer;
     Screen &screen;
 
     void drawSprite(const Sprite &sprite);
     static int wall2texcoord(TReal hx, TReal hy, int tw);
 
-
-
     //GUI
-    Font  font;
+    Font  _font;
+    Texture minimap;
+    TSize _mapRectW = 0;
+    TSize _mapRectH = 0;
+
 protected:
     void drawWorld();
     void drawActors();

@@ -20,6 +20,8 @@ struct Texture
     uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
     TArray<uint32_t> getScaledColumn(TSize texCoord, TSize height) const;
 
+    explicit operator bool() const noexcept {return img.size() != 0;}
+
     TSize w,h;
     TArray<uint32_t> img;
 };

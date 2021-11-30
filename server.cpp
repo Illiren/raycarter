@@ -106,7 +106,7 @@ void CustomServer::onMessage(std::shared_ptr<Connection<CustomMsgTypes>> client,
         }
 
         break;
-    }    
+    }
     case CustomMsgTypes::ClientUnregister:
     {
         break;

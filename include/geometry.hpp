@@ -6,7 +6,6 @@
 using Vector2D = Math::Vector2D<TReal>;
 using Vector3D = Math::Vector3D<TReal>;
 using Vector4D = Math::Vector4D<TReal>;
-using Vector2D = Math::Vector2D<TReal>;
 
 using Point2D = Math::Vector2D<TSize>;
 using Point3D = Math::Vector3D<TSize>;
@@ -35,6 +34,11 @@ struct Circle
 };
 
 
+template<typename T, TSize Dim>
+struct Triangle
+{
+    Math::Vector<T,Dim> angle[3];
+};
 
 /*      width
  *    |<----->| p2
@@ -152,6 +156,34 @@ inline constexpr bool intersect(const Circle<T,Dim> &c, const Ray<T,Dim> &l) noe
     if(d>0) return true;
 
     return false;
+}
+
+
+template<typename T, TSize Dim>
+inline constexpr float intersect(const Ray<T,Dim> &ray, const Triangle<T,Dim> &triangle)
+{
+    using Vec = Math::Vector<T,Dim>;
+    Vec e1 = triangle.angle[1] - triangle.angle[0];
+    Vec e2 = triangle.angle[2] - triangle.angle[0];
+
+    Vec normVec = Math::cross(ray.direction,e2);
+    T det = dot(e1,normVec);
+
+    if(det < 1e-8 && det > -1e-8) //if det == 0
+        return 0;
+
+    float invDet = 1/det;
+    Vec tvec = ray.origin - triangle.angle[0];
+    float u = dot(tvec,normVec)*invDet;
+
+    if(u<0|| u>1)
+        return 0;
+
+    Vec qvec = cross(tvec,triangle.angle[1]);
+    float v = dot(ray.direction,qvec) * invDet;
+    if(v<0 || u+v>1)
+        return 0;
+    return dot(e2,qvec) * invDet;
 }
 
 using FRectangle2D = Rectangle2D<TReal>;

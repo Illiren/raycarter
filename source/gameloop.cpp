@@ -9,7 +9,7 @@ void GameLoop::run()
     auto previous = chrono::steady_clock::now();
     using TimeMS = chrono::duration<float>;
 
-    float lag = 0.0;
+    float lag = 0.f;
     float time = 0.f;
     float fps = 0.f;
 

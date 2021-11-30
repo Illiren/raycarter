@@ -52,9 +52,9 @@ public: //Color defines
     static const Color Black;
 };
 
-constexpr Color Color::White = Color(255,255,255);
-constexpr Color Color::Red = Color(255,0,0);
-constexpr Color Color::Green = Color(0,255,0);
-constexpr Color Color::Blue = Color(0,0,255);
-constexpr Color Color::Black = Color(0,0,0);
+constexpr Color Color::White = Color(255,255,255,255);
+constexpr Color Color::Red = Color(255,0,0,255);
+constexpr Color Color::Green = Color(0,255,0,255);
+constexpr Color Color::Blue = Color(0,0,255,255);
+constexpr Color Color::Black = Color(0,0,0,255);
 

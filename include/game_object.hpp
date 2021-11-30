@@ -25,34 +25,44 @@ private:
 };
 
 
-class NActor;
+class Actor;
 
 class ActorComponent : public GameObject
 {
 public:
-    ActorComponent(NActor *actorParent);
-    NActor *getOwner() const noexcept;
+    ActorComponent(Actor *actorParent);
+    
+    Actor *getOwner() const noexcept;
 
 protected:
-    NActor *owner;
+    Actor *owner;
 };
 
 
-class NActor : public GameObject
+class Actor : public GameObject
 {
-    using ComponentList = TArray<ActorComponent>;
 public:
-    NActor();
+    using ComponentList = TArray<ActorComponent*>;
+public:
+    Actor();
+    ~Actor() override;
 
     FRectangle2D getCollisionBody() const noexcept;
-
+    virtual void interract(Actor *causer) {}
+    virtual void collision(Actor *causer) {}
     TReal    direction;
     Vector2D position;
     Location *location;
 
 
 private:
-    ComponentList _actorList;
+    ComponentList components;
+
+    friend class ActorComponent;
+
+    // GameObject interface
+public:
+    void update(TReal dt) override;
 };
 
 
@@ -67,7 +77,7 @@ struct MovementComponent : public ActorComponent
         Right = 1
     };
 
-    MovementComponent(NActor *parent);
+    MovementComponent(Actor *parent);
 
     char walk = 0;
     char turn = 0;
@@ -82,7 +92,7 @@ public:
 
 struct CameraComponent : public ActorComponent
 {
-    CameraComponent(NActor *parent);
+    CameraComponent(Actor *parent);
 
     Camera camera;
 
@@ -93,10 +103,30 @@ public:
 
 struct SpriteComponent : public ActorComponent
 {
-    SpriteComponent(PTexture text, NActor *parent);
+    SpriteComponent(PTexture text, Actor *parent);
     Sprite sprite;
 
     // GameObject interface
 public:
     void update(TReal dt) override;
+};
+
+struct Pawn : public Actor
+{
+public:
+    Pawn(PTexture text);
+
+    MovementComponent *movementComponent;
+    SpriteComponent   *spriteComponent;
+};
+
+
+struct Player : public Pawn
+{
+public:
+    Player(PTexture text);
+
+    CameraComponent *camera;
+
+    void doInteract();
 };

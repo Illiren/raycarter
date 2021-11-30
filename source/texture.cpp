@@ -38,6 +38,7 @@ Texture &Texture::operator=(const Texture &txt)
 
 void Texture::set(TSize x, TSize y, uint32_t value)
 {
+    assert(x+y*w < img.size());
     img[x+y*w] = value;
 }
 
@@ -45,8 +46,8 @@ Texture &Texture::operator=(Texture &&txt)
 {
     w = txt.w;
     h = txt.h;
-    txt.img = std::move(txt.img);
-    w=h=0;
+    img = std::move(txt.img);
+    txt.w=txt.h=0;
     return *this;
 }
 

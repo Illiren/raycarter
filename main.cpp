@@ -8,26 +8,23 @@
 using namespace std;
 
 
-struct Drake : public Actor
-{
-    Drake(PSound &ad) :
-          Actor(),
-          s(ad)
-    {}
 
-    ~Drake() = default;
-
-    void collision(Actor *) override {}
-
-    void interract(Actor *) override
-    {
-        cout << "Drake says: Hello" << endl;
-
-        s.play();
-    }
-
-    SoundSequence s;
-};
+const char mapdata[] = "2222222222222222"\
+                       "2              2"\
+                       "2     444444   2"\
+                       "2     4        2"\
+                       "2     4        2"\
+                       "2     3        2"\
+                       "2   44444      2"\
+                       "2   4   2      2"\
+                       "2   4   2      2"\
+                       "2   4   2      2"\
+                       "2       2      2"\
+                       "22222   2      2"\
+                       "2       2      2"\
+                       "2    2222222   2"\
+                       "2              2"\
+                       "2222222222222222";
 
 
 
@@ -36,55 +33,27 @@ struct Drake : public Actor
 
 int main()
 {
-    //CustomServer sever(1234);
-    //sever.start();
-
-    //CustomClient c;
-    //c.connect("192.168.1.96",1234);
-
-
-    AudioDB autiodb;
-
     bool debug = true;
     const size_t winW = 768;
     const size_t winH = 768;
 
     TextureDB test;
-    test.load("monsters.bmp",4,"monster");
     test.load("walltext.bmp",6,"wall");
-    test.load("player.bmp", "player");
-    test.load("weapon.bmp", "weapon");
-    test.load("dwarf.bmp", "dwarf");
-    test.load("orc.bmp", "orc");
-    test.load("troll.bmp", "troll");
-    autiodb.load("test.wav", "drakesay1");
-    auto sound = autiodb["drakesay1"];
-
-    Drake a1(sound);
-    a1.drawable.reset(new Sprite(test["monster2"], {3.523, 3.812}));
-
-    Actor a2;
-    a2.drawable.reset(new Sprite(test["orc"], {3.523, 13.812}));
-
-    Actor a3;
-    a3.drawable.reset(new Sprite(test["troll"], {12.0, 12.0}));
-
-    Actor a4;
-    a4.drawable.reset(new Sprite(test["monster3"],{6.42, 10.5}));
 
     RayCarter game({{0,0},{winW,winH}});
-    game._player.face = test["player"];
-    game._player.weapontext = test["weapon"];
-
+    Location loc(mapdata,16,16);
     for(TSize i=0;i<6;++i)
-        game.map().addTexture(test["wall"+std::to_string(i)]);
+        loc.addWallText(test["wall"+std::to_string(i)]);
+    loc.floor = *test["wall1"].lock().get();
+    loc.ceil = *test["wall0"].lock().get();
 
+    game.addLocation(std::move(loc),"level0");
 
     GetInputManager()[SDLK_ESCAPE].keydownEvent = [&game,&debug](){debug = false; game.stop();};
     GetInputManager()['p'].keydownEvent = [&game,&debug](){game.pause();};
     //GetInputManager()['1'].keydownEvent = [&c](){c.pingServer();};
     //GetInputManager()['2'].keydownEvent = [&c](){c.messageAll();};
-    game.start();
+    game.start(RayCarter::Singleplayer);
 
     while(debug)
     {

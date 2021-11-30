@@ -4,6 +4,8 @@
 #include <functional>
 #include "geometry.hpp"
 
+//Idea: static polymorphism for render, input, update. CRTP maybe
+
 
 class GameLoop
 {
@@ -22,6 +24,7 @@ public:
     void start();
     void pause();
     void stop();
+    inline State currentState() const noexcept {return _state;}
     int fps() const noexcept;
 
 private:

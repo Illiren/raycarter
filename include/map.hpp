@@ -5,56 +5,29 @@
 //#include "actor.hpp"
 
 
-class Map
-{
-public:
-    Map(const char *map, TSize width, TSize height);
-
-    //void spawn();
-    class Actor *spawn();
-    class Actor *trace(Vector2D origin, TReal agle, TReal dt, class Actor *actorToIgnore);
-
-    TSize width() const;
-    TSize height() const;
-
-    const char &operator [](TSize pos) const;    
-    const Texture &getTexture(TSize texId) const;
-    void addTexture(PTexture txt);
-
-
-private:
-    const char *mapRef = nullptr;
-    TSize _width = 0,
-          _height = 0;
-    TArray<Texture> n_textureDB;
-
-    constexpr static char empty = ' ';
-    constexpr static char actor = 'a';
-};
-
-
-
-class NActor;
+class Actor;
 
 struct Location
 {
-    Location();
+    Location() = default;
+    Location(const char *map, TSize width, TSize height);
     Location(const Location &) = default;
     Location(Location &&) = default;
     Location &operator=(const Location &) = default;
     Location &operator=(Location &&) = default;
 
-    NActor *trace(Vector2D origin, TReal direction, TReal dt, NActor *actorToIgnore);
+    Actor *trace(Vector2D origin, TReal direction, TReal dt, Actor *actorToIgnore);
     const char &operator [](TSize pos) const;
-    const Texture &getTexture(TSize texId) const;
-    void addTexture(PTexture txt);
-    void addActor(NActor *actor);
-    void removeActor(NActor *actor);
+    const Texture &getWallText(TSize texId) const;
+    void addWallText(PTexture txt);
+    void addActor(Actor *actor);
+    void removeActor(Actor *actor);
     void setMap(const char m[], TSize w, TSize h);
+    Texture generateMinimap(Math::Vector2D<TSize> mapSize);
 
-    TList<NActor*>  actorList;
+    TList<Actor*>  actorList;
     Texture         floor;
-    Texture         ceiling;
+    Texture         ceil;
     TArray<Texture> textureDB;
     TArray<char>    map;
     TSize           width = 0,
@@ -63,7 +36,8 @@ struct Location
 
 struct World
 {
-    void addLocation(Location &&l);
+    void addLocation(Location &&l, TString name);
+    Location &operator[](TString name);
 
     //Texture map();
     THashMap<TString, Location> locationMap;

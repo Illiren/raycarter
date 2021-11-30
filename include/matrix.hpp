@@ -771,9 +771,9 @@ struct Matrix<T, 1, 3>
     Matrix operator-() const
     {
         Matrix newOne;
-        newOne[0] = -_data[0];
-        newOne[1] = -_data[1];
-        newOne[2] = -_data[2];
+        newOne._data[0] = -_data[0];
+        newOne._data[1] = -_data[1];
+        newOne._data[2] = -_data[2];
         return newOne;
     }
     Matrix &operator-=(Matrix m)

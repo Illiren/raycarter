@@ -8,17 +8,16 @@ Drawable::Drawable() :
     _drawableRegister.push_back(this);
 }
 
-Drawable::Drawable(TReal xx, TReal yy) :
-      x(xx),
-      y(yy),
+Drawable::Drawable(Vector2D position) :
+      pos(position),
       dist(0)
 {
     _drawableRegister.push_back(this);
 }
 
-void Drawable::updateDist(TReal cx, TReal cy)
+void Drawable::updateDist(Vector2D r)
 {
-    dist = std::sqrt(pow(cx - x,2) + pow(cy - y, 2));
+    dist = std::sqrt(pow(r.x() - pos.x(), 2) + pow(r.y() - pos.y(), 2));
 }
 
 Drawable::~Drawable()
@@ -34,7 +33,7 @@ void Drawable::sort()
 }
 
 Sprite::Sprite(PTexture texture, Vector2D pos) :
-      Drawable(pos.x(),pos.y()),
+      Drawable(pos),
       tex(texture)
 {}
 
