@@ -1,6 +1,7 @@
 # RayCaster SDL2
 
-Данный проект является тестовой реализацией многопоточной реализации 2.5D rayсaster рендера на основе SDL2.
+Данный проект является тестовой реализацией многопоточной реализации 2.5D rayсaster рендера с фреймбуфером на основе SDL2.
+Ещё звуки запускаются через OpenAL.
 
 ![name](./testrun.gif)
 
@@ -11,10 +12,10 @@ _Ray Carter_
  * отображение миникарты с индикации положения камеры и конуса обзора
    
 ## Зависимости
-1. A C++17 compiler. Following compilers should work:
-  * [gcc 7+](https://gcc.gnu.org/)
+1. A C++20 compiler. Following compilers should work:
+  * [gcc 10+](https://gcc.gnu.org/)
 
-  * [clang 6+](https://clang.llvm.org/)
+  * [clang 10+](https://clang.llvm.org/)
   
 2. [CMake 2.8+](https://cmake.org/)
 

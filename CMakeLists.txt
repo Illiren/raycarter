@@ -54,9 +54,7 @@ file(COPY resources/player.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/weapon.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/test.wav DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/smallfont.bmp DESTINATION "${CMAKE_BINARY_DIR}")
-file(COPY resources/dwarf.bmp DESTINATION "${CMAKE_BINARY_DIR}")
-file(COPY resources/orc.bmp DESTINATION "${CMAKE_BINARY_DIR}")
-file(COPY resources/troll.bmp DESTINATION "${CMAKE_BINARY_DIR}")
+
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
