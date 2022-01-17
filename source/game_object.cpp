@@ -1,131 +1,131 @@
 #include "game_object.hpp"
+#include <iostream>
 
-std::list<GameObject*> GameObject::_objectRegister;
+GarbageCollector &GC()
+{
+    static GarbageCollector gc;
+    return gc;
+}
 
 GameObject::GameObject()
 {
     static TSize i = 0; //Bad UID
     name = "Object " + std::to_string(i++);
-    _objectRegister.push_back(this);
 }
+
+void *GameObject::operator new(std::size_t count, GameObject *parent)
+{
+    auto ptr = ::operator new(count);
+    auto &gc = GC();
+    if(parent)
+    {
+        parent->children.push_back((GameObject*)ptr);
+        gc.heap.push_back((GameObject*)ptr);
+    }
+    else
+    {
+        gc.roots.push_back((GameObject*)ptr);
+    }
+
+    return ptr;
+}
+
+void GameObject::operator delete(void *ptr)
+{
+    auto &gc = GC();
+
+    gc.roots.remove((GameObject*)ptr);
+    gc.heap.remove((GameObject*)ptr);
+
+    ::operator delete(ptr);
+    ptr = nullptr;
+}
+
+void GameObject::mark()
+{
+    _isMarked = true;
+    markChildren();
+}
+
+void GameObject::markChildren()
+{
+    for(auto &child : children)
+        if(!child->_isRemove)
+            child->mark();
+        else
+            children.remove(child);
+}
+
 
 GameObject::~GameObject()
 {
-    _objectRegister.remove(this);
-}
-
-ActorComponent::ActorComponent(Actor *actorParent) :
-      GameObject(),
-      owner(actorParent)
-{
-    owner->components.push_back(this);
-}
-
-Actor *ActorComponent::getOwner() const noexcept {return owner;}
-
-
-Actor::Actor()
-{}
-
-Actor::~Actor()
-{
-    GameObject::~GameObject();
-    for(auto component : components)
-        delete component;
-}
-
-FRectangle2D Actor::getCollisionBody() const noexcept
-{
-    Rectangle2D<TReal> rect;
-    rect.topleft.x() = position.x() - 0.4f;
-    rect.topleft.y() = position.y() - 0.4f;
-
-    rect.botright.x() = position.x() + 0.4f;
-    rect.botright.y() = position.y() + 0.4f;
-
-    return rect;
-}
-
-void Actor::update(TReal dt)
-{
 
 }
 
 
-MovementComponent::MovementComponent(Actor *parent) :
-      ActorComponent(parent)
-{}
 
-void MovementComponent::update(TReal dt)
+void GarbageCollector::update(TReal dt)
 {
-    if(!owner->location) return;
-    TReal &dir = owner->direction;
-    Vector2D &pos = owner->position;
-    Location &map = *owner->location;
-    dir += float(turn)*maxSpeed*dt;
+    for(auto &o : roots)
+        o->update(dt);
 
-    constexpr float length=0.5;
-    const auto cosa = std::cos(dir);
-    const auto sina = std::sin(dir);
+    for(auto &o : heap)
+        o->update(dt);
+}
 
-    float nx = pos.x() + cosa*speed*runSpeedMultiplier*dt;
-    float ny = pos.y() + sina*speed*runSpeedMultiplier*dt;
+void GarbageCollector::collect(bool verbose)
+{
+    mark(verbose);
+    sweep(verbose);
+}
 
-    float dx = length*cosa+nx;
-    float dy = length*sina+ny;
+void GarbageCollector::mark(bool verbose)
+{
+    using namespace std;
+    for(auto &o : roots)
+        o->mark();
 
-    if(int(nx) >= 0 && int(nx) < 16 && int(ny) >= 0 && int(ny)< 16)
+    if(verbose)
     {
-        const size_t posX = size_t(dx)+size_t(pos.y())*map.width;
-        const size_t posY = size_t(pos.x())+size_t(dy)*map.width;
-
-        if(map[posX] == ' ')
-            pos.x() = nx;
-        if(map[posY] == ' ')
-            pos.y() = ny;
+        cout << "Roots: " << roots.size() << " roots" << endl;
+        cout << "Heap: " << heap.size() << " objects in heap" << endl;
     }
 }
 
-CameraComponent::CameraComponent(Actor *parent) :
-      ActorComponent(parent)
-{}
-
-void CameraComponent::update(TReal dt)
+void GarbageCollector::sweep(bool verbose)
 {
-    camera.direction = owner->direction;
-    camera.origin    = owner->position;
-}
+    using namespace std;
+    unsigned int live = 0,
+                 total = 0;
 
+    TArray<TList<GameObject*>::iterator> toErase;
+    const auto heapEnd = heap.end();
+    for(auto it = heap.begin(); it!=heapEnd; ++it)
+    {
+        GameObject *p = *it;
+        total++;
+        if(p->_isMarked)
+        {
+            p->_isMarked = false;
+            ++live;
+        }
+        else
+            toErase.push_back(it);
+    }
 
-SpriteComponent::SpriteComponent(PTexture text, Actor *parent) :
-      ActorComponent(parent),
-      sprite(text, {0.f,0.f})
-{
+    auto dead = toErase.size();
+    const auto eraseEnd = toErase.end();
+    for(auto it = toErase.begin(); it != eraseEnd; ++it)
+    {
+        GameObject *p = **it;
+        heap.erase(*it);
+        delete p;
+    }
 
-}
-
-void SpriteComponent::update(TReal dt)
-{
-    sprite.pos = owner->position;
-}
-
-Pawn::Pawn(PTexture text) :
-      Actor()
-{
-    movementComponent = new MovementComponent(this);
-    spriteComponent = new SpriteComponent(text,this);
-}
-
-
-Player::Player(PTexture text) :
-      Pawn(text)
-{
-    camera = new CameraComponent(this);
-}
-
-void Player::doInteract()
-{
-    if(!location) return;
-    auto actor = location->trace(position, direction, 2, this);
-    if(actor) actor->interract(this);
+    if(verbose)
+    {
+        cout << "GC: " << live << " objects survive after sweep" << endl;
+        cout << "GC: " << dead << " objects died after sweep" << endl;
+        cout << "GC: " << total << " total objects sweeped" << endl;
+    }
 }

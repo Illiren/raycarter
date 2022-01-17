@@ -4,9 +4,7 @@
 #include <functional>
 #include "geometry.hpp"
 
-//Idea: static polymorphism for render, input, update. CRTP maybe
-
-
+template<typename Base>
 class GameLoop
 {
 public:
@@ -17,30 +15,88 @@ public:
         Pause = 2,
     };
 
-public:
-    GameLoop(TReal fpsimit = 60.f);
-    virtual ~GameLoop();
+protected:
+    GameLoop(TReal fpsimit = 60.f) :
+          _state(Idle),
+          _fpsLimit(fpsimit)
+    {}
+    ~GameLoop()
+    { }
 
-    void start();
-    void pause();
-    void stop();
+public:
+    void start()
+    {
+        if(_state)
+            return;
+        _state = Running;
+        static_cast<Base*>(this)->init();
+        run();
+    }
+    void pause()
+    {
+        if(_state == Running)
+            _state = Pause;
+        else if (_state == Pause)
+            _state = Running;
+    }
+    void stop()
+    {
+        _state = Idle;
+    }
     inline State currentState() const noexcept {return _state;}
-    int fps() const noexcept;
+    int fps() const noexcept { return _fps; }
 
 private:
     State _state;
     TReal _fpsLimit;
-    std::thread _loopthread;
     int _fps;
 
-    TReal msPerUpdate() const noexcept;
-    void run();
+    TReal msPerUpdate() const noexcept { return TReal(1)/_fpsLimit; }
+
+    void run()
+    {
+        using namespace std;
+
+        auto previous = chrono::steady_clock::now();
+        using TimeMS = chrono::duration<float>;
+
+        float lag = 0.f;
+        float time = 0.f;
+        float fps = 0.f;
+
+        while(_state)
+        {
+            auto currentTime = chrono::steady_clock::now();
+            auto elapsed = chrono::duration<float,milli>(currentTime - previous);
+            previous = currentTime;
+
+            time += elapsed.count();
+            ++fps;
+            lag=elapsed.count();
+
+            static_cast<Base*>(this)->input();
+
+            if(_state != Pause)
+                static_cast<Base*>(this)->update(lag);
+
+            static_cast<Base*>(this)->render();
+
+            auto endOfFrame = chrono::steady_clock::now();
+
+            auto freeTime = TimeMS(msPerUpdate()) - TimeMS(endOfFrame - currentTime);
+            this_thread::sleep_for(freeTime);
+
+            if(time >= 1000)
+            {
+                if(printEvent) printEvent();
+                _fps = fps;
+                fps = 0;
+                time = 0;
+            }
+        }
+    }
 
 
 protected:
-    virtual void init() = 0;
-    virtual void input() = 0;
-    virtual void render() = 0;
-    virtual void update(TReal lag) = 0;
     std::function<void ()> printEvent;
 };

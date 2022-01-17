@@ -46,3 +46,10 @@ using TString = std::string;
 template<typename T>
 using TInitializerList = std::initializer_list<T>;
 
+#ifdef DEBUG
+#define __PARALLEL 0
+#else
+#define __PARALLEL 1
+#endif
+
+

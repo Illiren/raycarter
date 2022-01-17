@@ -29,6 +29,7 @@ private:
 struct Sprite : public Drawable
 {
     Sprite(PTexture texture, Vector2D pos);
+    Sprite(Vector2D pos);
     ~Sprite() override;
 
     void update() override;

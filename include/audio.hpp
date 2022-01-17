@@ -32,21 +32,6 @@ struct Wav
 
 using PSound = std::weak_ptr<Wav>;
 
-class AudioDB
-{
-    using TShared = std::shared_ptr<Wav>;
-    using TMapData = std::unordered_map<TString, TShared>;
-public:
-    AudioDB();
-
-    bool load(TString filename, TString nameBase = "Undefined");
-    PSound operator[](TString id) const;
-
-private:
-    TMapData _db;
-    TString getName(TString baseName) const;
-};
-
 struct SoundSequence
 {
     SoundSequence() = default;
@@ -75,13 +60,19 @@ public:
     friend Audio &GetAudio();
 
     std::weak_ptr<bool> play(PSound wav, bool repeatable = false);
+    std::weak_ptr<bool> playTest(PSound wav, bool repeatable = false);
+
+
     static TArray<TString> getAvailableDevices(ALCdevice *device);
 
     ~Audio();
-private:
+private:    
     ALCdevice  *openALDevice;
     ALCcontext *openALContext;
     ALCboolean contextMadeCurrent;
+
+
+
     TArray<Thread> _worker;
     TQueue<Task>   _tasks;
     TMutex         _queueMutex;
@@ -96,3 +87,23 @@ private:
 };
 
 Audio &GetAudio();
+
+
+
+class AudioTest
+{
+    static constexpr TSize NumBuffers = 4;
+    static constexpr ALsizei BufferSize = 65536;
+public:
+    AudioTest();
+    ~AudioTest();
+
+    void play(const Wav &wav);
+
+
+private:
+    ALCdevice  *openALDevice;
+    ALCcontext *openALContext;
+    ALCboolean contextMadeCurrent;
+
+};

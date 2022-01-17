@@ -3,14 +3,15 @@
 #include "window.hpp"
 #include "color.hpp"
 #include "screen.hpp"
-#include "map.hpp"
+#include "location.hpp"
 #include "camera.hpp"
 #include "gameloop.hpp"
 #include "input.hpp"
 #include "drawable.hpp"
 #include "network.hpp"
 #include "audio.hpp"
-#include "game_object.hpp"
+#include "actor.hpp"
+#include "resourcemanager.hpp"
 #include <functional>
 
 
@@ -53,9 +54,9 @@ enum class CustomMsgTypes : uint32_t
 class NPC_Drake : public Pawn
 {
 public:
-    NPC_Drake(PTexture text, PSound wav) :
-          Pawn(text),
-          sound(wav)
+    NPC_Drake() :
+          Pawn(),
+          sound(RM().sound("test"))
     {}
 
 private:
@@ -63,13 +64,13 @@ private:
 
     // NActor interface
 public:
-    void interract(Actor *causer) override
+    void onInterract(Actor *causer) override
     {
         sound.play();
     }
 };
 
-class RayCarter : public GameLoop, public Client<CustomMsgTypes>
+class RayCarter : public Client<CustomMsgTypes>, public GameLoop<RayCarter>
 {
 public:
     enum Mode
@@ -81,13 +82,11 @@ public:
 
 public:
     RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit = 60.f);
-    ~RayCarter() override;
+    ~RayCarter();
 
-    void start() { GameLoop::start();}
     void start(Mode mode);
-    void addLocation(Location &&location, TString locationName);
+    void addLocation(Location *location, TString locationName);
     void addActor(Actor *actor, TString locationName);
-    //void setPlayerActor(Player *player);
 
 
     World world;
@@ -97,11 +96,11 @@ public:
     TString  host;
     uint16_t port;
     uint32_t playerID;
-    TextureDB textureDB;
-    AudioDB autiodb;
+
 
 private:
     InputManager &keyMap;
+    ResourceManager &rm;
 
     void initPlayer(Mode mode);
     Mode currentMode;
@@ -133,9 +132,9 @@ private:
     void physX();
 
     // GameLoop interface
-protected:
-    void init() override;
-    void input() override;
-    void render() override;
-    void update(TReal lag) override;
+public:
+    void init();
+    void input();
+    void render();
+    void update(TReal lag);
 };

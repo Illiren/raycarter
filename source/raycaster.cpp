@@ -8,6 +8,7 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
       GameLoop(fpsLimit),
       viewport(winSize),
       keyMap(GetInputManager()),
+      rm(RM()),
       currentMode(None)
 {
     GetInputManager()['a'].keydownEvent = [this](){turnLeft();};
@@ -25,18 +26,18 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
     GetInputManager()[SDLK_LSHIFT].keydownEvent = [this](){sprintOn();};
     GetInputManager()[SDLK_LSHIFT].keyupEvent = [this](){sprintOff();};
 
-    textureDB.load("monsters.bmp",4,"avatar");
-    textureDB.load("player.bmp", "player");
-    textureDB.load("weapon.bmp", "weapon");
 
-    autiodb.load("test.wav","test");
+    rm.loadTexture("monsters.bmp",4,"avatar");
+    rm.loadTexture("player.bmp", "player");
+    rm.loadTexture("weapon.bmp", "weapon");
 
-    viewport.playerFace = *textureDB["player"].lock().get();
-    viewport.hudWeapon = *textureDB["weapon"].lock().get();
+    rm.loadAudio("test.wav","test");
 
-    auto drake = new NPC_Drake(textureDB["avatar0"], autiodb["test"]);
-    drake->position = {4.0f, 13.4f};
-    world["level0"].addActor(drake);
+    viewport.playerFace = *rm.texture("player").lock().get();
+    viewport.hudWeapon = *rm.texture("weapon").lock().get();
+
+    //auto drake = new NPC_Drake(textureDB["avatar0"]);
+    //drake->position = {4.0f, 13.4f};
 }
 
 RayCarter::~RayCarter()
@@ -62,7 +63,7 @@ void RayCarter::start(Mode mode)
     GameLoop::start();
 }
 
-void RayCarter::addLocation(Location &&location, TString locationName)
+void RayCarter::addLocation(Location *location, TString locationName)
 {
     world.addLocation(std::move(location), locationName);
 }
@@ -71,36 +72,35 @@ void RayCarter::initPlayer(Mode mode)
 {
     if(mode == Singleplayer)
     {
-        auto player = new Player(textureDB["avatar2"]);
-        player->position = {3.4f, 3.4f};
+        auto player = world["level0"]->spawn<Player>({3.4f, 3.4f});
         viewport.setCamera(player->camera);
         controller = player->movementComponent;
-        player->camera->camera.fov = M_PI/3.f;
-        player->camera->camera.distance = 20;
+        player->camera->camera.fov = 1.f;
+        player->camera->camera.distance = 5;
         player->direction = 1;
 
-        world["level0"].addActor(player);
+        world["level0"]->addActor(player);
     }
+
+    NPC_Drake *drake = world["level0"]->spawn<NPC_Drake>({4.0f,13.4f});
+    drake->spriteComponent->setTexture(rm.texture("avatar2"));
 }
 
 void RayCarter::physX()
 {
-    auto list = GameObject::getRegister();
-    for(auto &o : list)
-    {
-        auto actor = dynamic_cast<Actor*>(o);
+    auto &list = world["level0"]->actorList;
+    for(auto &actor : list)
+    {        
         if(!actor) continue;
 
-        for(auto &o2 : list)
+        for(auto &actor2 : list)
         {
-            if(o == o2) continue;
-            auto actor2 = dynamic_cast<Actor*>(o2);
+            if(actor == actor2) continue;
             if(!actor2) continue;
-            //if(collisionCheck(*actor, *actor2))
             if(intersect(actor->getCollisionBody(),actor2->getCollisionBody()))
             {
-                actor->collision(actor2);
-                actor2->collision(actor);
+                actor->onCollision(actor2);
+                actor2->onCollision(actor);
             }
         }
     }
@@ -163,7 +163,7 @@ void RayCarter::update(TReal lag)
                     if(actor)
                     {
                         playerMap.insert({d.uniqueID, actor});
-                        world["level"+std::to_string(d.locactionID)].addActor(actor);
+                        world["level"+std::to_string(d.locactionID)]->addActor(actor);
                     }
                     std::cout << "Game Add Player id:" << d.uniqueID << std::endl;
 
@@ -219,9 +219,8 @@ void RayCarter::update(TReal lag)
 
 
     physX();
-    auto list = GameObject::getRegister();
-    for(const auto &o : list)
-        o->update(lag);
+    GC().update(lag);
+    GC().collect(false);
 
 
     if(currentMode == Multiplayer && controller->isValid())
@@ -289,7 +288,7 @@ void RayCarter::interact()
 
 Player *RayCarter::desc2Actor(const PlayerDescription &desc)
 {
-    Player *a = new Player(textureDB["avatar"+std::to_string(desc.avatarID)]);
+    Player *a = new Player();
     a->position = desc.pos;
 
 

@@ -8,22 +8,28 @@
 struct Texture
 {
     Texture();
-    Texture(uint32_t w, uint32_t h);
+    //Texture(uint32_t w, uint32_t h);
+    Texture(Vector2U size);
 
     Texture(const Texture &txt);
     Texture(Texture &&txt);
     Texture &operator=(const Texture &txt);
     Texture &operator=(Texture &&txt);
 
-    void set(TSize x, TSize y, uint32_t value);
-    uint32_t get(TSize x, TSize y) const;
-    uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
+    //void set(TSize x, TSize y, uint32_t value);
+    //uint32_t get(TSize x, TSize y) const;
+    //uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
     TArray<uint32_t> getScaledColumn(TSize texCoord, TSize height) const;
 
     explicit operator bool() const noexcept {return img.size() != 0;}
 
-    TSize w,h;
+    //TSize w,h;
     TArray<uint32_t> img;
+    Vector2U size;
+
+    void set(Vector2U pos, uint32_t value);
+    uint32_t get(Vector2U pos) const;
+    uint32_t get(Vector2U pos, TSize spriteScreenSize) const;
 };
 
 using PTexture = std::weak_ptr<Texture>;
@@ -32,27 +38,6 @@ inline bool isValid(const PTexture &weak)
 {
     return !weak.expired();
 }
-
-class TextureDB
-{
-    using TSharedPtr = std::shared_ptr<Texture>;
-public:
-    TextureDB();
-
-    bool load(TString filename, TString nameBase = "Undefined");
-    bool load(TString filename, uint32_t count, TString nameBase = "Undefined");
-    PTexture operator[](TString id) const;
-
-private:
-    std::unordered_map<TString, TSharedPtr> _db;
-
-    TString getName(TString baseName) const;
-    static SDL_Surface *loadSurface(TString filename, uint32_t format = SDL_PIXELFORMAT_ABGR8888);
-    static Texture *createTexture(uint32_t w, uint32_t h, uint32_t s, uint8_t *pixmap, uint32_t index = 0);
-
-    friend struct Font;
-};
-
 
 struct Font
 {

@@ -3,6 +3,8 @@
 #include "audio.hpp"
 #include "network.hpp"
 #include <thread>
+#include <omp.h>
+#include "optimizer.hpp"
 
 
 using namespace std;
@@ -33,6 +35,7 @@ const char mapdata[] = "2222222222222222"\
 
 int main()
 {
+    omp_set_num_threads(2);
     bool debug = true;
     const size_t winW = 768;
     const size_t winH = 768;
@@ -41,11 +44,11 @@ int main()
     test.load("walltext.bmp",6,"wall");
 
     RayCarter game({{0,0},{winW,winH}});
-    Location loc(mapdata,16,16);
+    Location *loc = new Location(mapdata,16,16);
     for(TSize i=0;i<6;++i)
-        loc.addWallText(test["wall"+std::to_string(i)]);
-    loc.floor = *test["wall1"].lock().get();
-    loc.ceil = *test["wall0"].lock().get();
+        loc->addWallText(test["wall"+std::to_string(i)]);
+    loc->floor = *test["wall1"].lock().get();
+    loc->ceil = *test["wall0"].lock().get();
 
     game.addLocation(std::move(loc),"level0");
 
@@ -54,6 +57,7 @@ int main()
     //GetInputManager()['1'].keydownEvent = [&c](){c.pingServer();};
     //GetInputManager()['2'].keydownEvent = [&c](){c.messageAll();};
     game.start(RayCarter::Singleplayer);
+
 
     while(debug)
     {

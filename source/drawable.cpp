@@ -37,6 +37,10 @@ Sprite::Sprite(PTexture texture, Vector2D pos) :
       tex(texture)
 {}
 
+Sprite::Sprite(Vector2D pos) :
+      Drawable(pos)
+{}
+
 Sprite::~Sprite()
 {}
 
@@ -52,5 +56,6 @@ uint32_t Sprite::get(TSize i, TSize j, TSize spriteScreenSize) const
 {
     assert(isValid(tex) && "texture is invalid");
     const auto p = tex.lock();
-    return p->get(i*p->h/spriteScreenSize,j*p->w/spriteScreenSize);
+    //return p->get(i*p->h/spriteScreenSize,j*p->w/spriteScreenSize);
+    return p->get({i*p->size.y()/spriteScreenSize,j*p->size.x()/spriteScreenSize});
 }

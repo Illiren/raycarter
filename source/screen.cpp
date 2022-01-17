@@ -109,7 +109,7 @@ void Screen::drawRectangle(Point2D origin, TSize width, TSize height, Color colo
 {
     assert(_framebuffer->size() == _height*_width);
 
-#ifndef DEBUG
+#if __PARALLEL == 0
 #pragma omp parallel for collapse(2)
 #endif
     for(TSize i = 0; i<width; ++i)
@@ -194,7 +194,7 @@ void Screen::drawTriangle(Point2D t0, Point2D t1, Point2D t2, Color color)
 
     auto totalHeight = t2.y() - t0.y();
 
-#ifndef DEBUG
+#if __PARALLEL == 0
 #pragma omp parallel for
 #endif
     for(int i=0;i<totalHeight;++i)
@@ -231,20 +231,23 @@ void Screen::drawPoint(const Point2D &p, Color color)
 
 void Screen::drawTexture(const Texture &text, Point2D p, TReal hs, TReal ws)
 {
-    auto w = text.w;
-    auto h = text.h;
-    auto hscale = static_cast<int>(h/hs);
-    auto wscale = static_cast<int>(w/ws);
-    auto xoffset = p.x();
-    auto yoffset = p.y();
+    //const auto w = text.w;
+    //const auto h = text.h;
+    const auto w = text.size.x();
+    const auto h = text.size.y();
+    const auto hscale = static_cast<int>(h/hs);
+    const auto wscale = static_cast<int>(w/ws);
+    const auto xoffset = p.x();
+    const auto yoffset = p.y();
 
-#ifndef DEBUG
+#if __PARALLEL == 0
 #pragma omp parallel for collapse(2)
 #endif
     for(TSize i = 0;i<wscale;++i)
         for(TSize j=0;j<hscale;++j)
         {
-            Color color = text.get(i*h/hscale,j*w/wscale);
+            //Color color = text.get(i*h/hscale,j*w/wscale);
+            Color color = text.get({i*h/hscale,j*w/wscale});
             if(color.alpha() > 127)
             {
                 const auto x = xoffset+i;
@@ -257,8 +260,10 @@ void Screen::drawTexture(const Texture &text, Point2D p, TReal hs, TReal ws)
 
 void Screen::drawTexture(const Texture &text, Rectangle2D<TSize> p, TReal hs, TReal ws)
 {
-    const auto w = text.w;
-    const auto h = text.h;
+    //const auto w = text.w;
+    //const auto h = text.h;
+    const auto w = text.size.x();
+    const auto h = text.size.y();
     const auto orig = p.topleft;
     const auto end = p.botright;
     assert(orig.x() > 0 && orig.y() > 0 && "Out of range");
@@ -266,13 +271,14 @@ void Screen::drawTexture(const Texture &text, Rectangle2D<TSize> p, TReal hs, TR
     const auto hscale = static_cast<int>(h/hs);
     const auto wscale = static_cast<int>(w/ws);
 
-#ifndef DEBUG
+#if __PARALLEL == 0
 #pragma omp parallel for collapse(2)
 #endif
     for(TSize i = 0; i < wscale; ++i)
         for(TSize j = 0; j < hscale; ++j)
         {
-            Color color = text.get(i*h/hscale, j*w/wscale);
+            //Color color = text.get(i*h/hscale,j*w/wscale);
+            Color color = text.get({i*h/hscale,j*w/wscale});
             const auto x = orig.x() + i;
             const auto y = orig.y() + j;
 

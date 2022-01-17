@@ -45,9 +45,8 @@ private:
 
     //GUI
     Font  _font;
-    Texture minimap;
-    TSize _mapRectW = 0;
-    TSize _mapRectH = 0;
+    Texture _minimap;
+    Vector2U _mapRect;
 
 protected:
     void drawWorld();
@@ -58,3 +57,5 @@ protected:
 public:
     void draw() override;
 };
+
+

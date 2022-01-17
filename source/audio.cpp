@@ -308,51 +308,6 @@ Wav::operator bool() const noexcept
     return !data.empty();
 }
 
-AudioDB::AudioDB()
-{}
-
-bool AudioDB::load(TString filename, TString nameBase)
-{
-    TString name = getName(nameBase);
-    Wav *w = new Wav(filename);
-    if(!w || !(*w))
-    {
-        std::cout << "Couldn't load wav" << std::endl;
-        delete w;
-        return false;
-    }
-
-    _db.insert({name, TShared(w)});
-    return true;
-}
-
-PSound AudioDB::operator[](TString id) const
-{
-    return _db.at(id);
-}
-
-TString AudioDB::getName(TString baseName) const
-{
-    unsigned int counter = 0;
-    TString newName = baseName;
-
-    while(1) //THE BAD THING
-    {
-        auto it = _db.find(newName);
-
-        if(it == _db.end())
-            return newName;
-        else
-        {
-            if(counter == std::numeric_limits<decltype(counter)>::max())
-                break;
-            newName = baseName+std::to_string(counter++);
-        }
-    }
-
-    return "FUCK"; //Signals an error
-}
-
 
 std::weak_ptr<bool> Audio::play(PSound wav, bool repeatable)
 {
@@ -409,6 +364,18 @@ std::weak_ptr<bool> Audio::play(PSound wav, bool repeatable)
                 alCall(alDeleteBuffers,1,&buffer);
             });
     return sharedBool;
+}
+
+std::weak_ptr<bool> Audio::playTest(PSound wav, bool repeatable)
+{
+    uint64_t enqueued = 0;
+    while(_running)
+    {
+        ALint off;
+
+        //alGetSourcei()
+
+    }
 }
 
 void Audio::enqueue(const Task &f)
@@ -534,6 +501,56 @@ bool SoundSequence::isPlayed() const {return !playstate.expired();}
 
 
 
+
+
+
+
+
+
+AudioTest::AudioTest()
+{
+    openALDevice = alcOpenDevice(nullptr);
+    alcCall(alcCreateContext, openALContext, openALDevice,openALDevice,nullptr);
+    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, openALContext);
+}
+
+AudioTest::~AudioTest()
+{
+    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, nullptr);
+    alcCall(alcDestroyContext,openALDevice, openALContext);
+    ALCboolean closed;
+    alcCall(alcCloseDevice, closed, openALDevice, openALDevice);
+}
+
+void AudioTest::play(const Wav &wav)
+{
+    ALuint buffers[NumBuffers];
+    alCall(alGenBuffers, NumBuffers, &buffers[0]);
+
+    const auto channel = wav.channel;
+    const auto bitPerSample = wav.bitPerSample;
+    const auto data = wav.data;
+    const auto size = wav.size;
+    const auto sampleRate = wav.sampleRate;
+
+    ALenum format;
+    if(channel == 1 && bitPerSample == 8)
+        format = AL_FORMAT_MONO8;
+    else if(channel == 1 && bitPerSample == 16)
+        format = AL_FORMAT_MONO16;
+    else if(channel == 2 && bitPerSample == 8)
+        format = AL_FORMAT_STEREO8;
+    else if(channel == 2 && bitPerSample == 16)
+        format = AL_FORMAT_STEREO16;
+    else
+    {
+        //Error
+        return;
+    }
+
+
+
+}
 
 
 

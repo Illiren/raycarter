@@ -11,6 +11,11 @@ using Point2D = Math::Vector2D<TSize>;
 using Point3D = Math::Vector3D<TSize>;
 
 
+using Vector2F = Math::Vector2D<TReal>;
+using Vector2I = Math::Vector2D<TInt64>;
+using Vector2U = Math::Vector2D<TSize>;
+
+
 template<typename T, TSize Dim>
 struct Ray
 {
@@ -43,9 +48,9 @@ struct Triangle
 /*      width
  *    |<----->| p2
  * p1 +-------+--
- *    |       | |
+ *    |       | ^
  *    |       | | height
- *    |       | |
+ *    |       | v
  *    +-------+--
  *  p4         p3
  *
@@ -101,6 +106,7 @@ inline constexpr bool intersect(const Math::Vector<T,2> &p, const Circle2D<T> &c
     return dx*dx + dy*dy <= crcl.radius*crcl.radius;
 }
 
+//AABB Algorithm
 template<typename T>
 inline constexpr bool intersect(const Rectangle2D<T> &lhs, const Rectangle2D<T> &rhs) noexcept
 {
@@ -158,9 +164,9 @@ inline constexpr bool intersect(const Circle<T,Dim> &c, const Ray<T,Dim> &l) noe
     return false;
 }
 
-
+//Möller Trumbore algorithm
 template<typename T, TSize Dim>
-inline constexpr float intersect(const Ray<T,Dim> &ray, const Triangle<T,Dim> &triangle)
+inline constexpr auto intersect(const Ray<T,Dim> &ray, const Triangle<T,Dim> &triangle)
 {
     using Vec = Math::Vector<T,Dim>;
     Vec e1 = triangle.angle[1] - triangle.angle[0];
@@ -170,22 +176,53 @@ inline constexpr float intersect(const Ray<T,Dim> &ray, const Triangle<T,Dim> &t
     T det = dot(e1,normVec);
 
     if(det < 1e-8 && det > -1e-8) //if det == 0
-        return 0;
+        return T{0};
 
-    float invDet = 1/det;
+    auto invDet = 1/det;
     Vec tvec = ray.origin - triangle.angle[0];
-    float u = dot(tvec,normVec)*invDet;
+    auto u = dot(tvec,normVec)*invDet;
 
-    if(u<0|| u>1)
-        return 0;
+    if((u<0) || (u>1))
+        return T{0};
 
     Vec qvec = cross(tvec,triangle.angle[1]);
-    float v = dot(ray.direction,qvec) * invDet;
-    if(v<0 || u+v>1)
-        return 0;
+    auto v = dot(ray.direction,qvec) * invDet;
+    if((v<0) || (u+v>1))
+        return T{0};
     return dot(e2,qvec) * invDet;
 }
 
 using FRectangle2D = Rectangle2D<TReal>;
 using FRay2D = Ray2D<TReal>;
 
+
+template<typename T>
+Math::Matrix<T,2,2> rotator(T radAngle)
+{
+    return {{std::cos(radAngle),std::sin(radAngle)},
+            {-std::sin(radAngle), std::cos(radAngle)}};
+}
+
+template<typename T>
+Math::Matrix<T,3,3> rotatorX(T radAngle)
+{
+    return {{1,0,0},
+            {0,std::cos(radAngle),-std::sin(radAngle)},
+            {0,std::sin(radAngle),std::cos(radAngle)}};
+}
+
+template<typename T>
+Math::Matrix<T,3,3> rotatorY(T radAngle)
+{
+    return {{std::cos(radAngle),0,std::sin(radAngle)},
+            {0,1,0},
+            {-std::sin(radAngle),0,std::cos(radAngle)}};
+}
+
+template<typename T>
+Math::Matrix<T,3,3> rotatorZ(T radAngle)
+{
+    return {{std::cos(radAngle),-std::sin(radAngle),0},
+            {std::sin(radAngle),std::cos(radAngle),0},
+            {0,0,1}};
+}
