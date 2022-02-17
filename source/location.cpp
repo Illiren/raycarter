@@ -2,12 +2,11 @@
 #include "geometry.hpp"
 #include "actor.hpp"
 
-Location::Location(const char *m, TSize w, TSize h) :
-      width(w),
-      height(h),
-      map(w*h)
+Location::Location(const char *m, Vector2U s) :
+      map(s.x()*s.y()),
+      size(s)
 {
-    const auto mapSize = w*h;
+    const auto mapSize = s.x()*s.y();
     for(auto i = mapSize;i--;map[i] = m[i]);
 }
 
@@ -39,6 +38,11 @@ const char &Location::operator [](TSize pos) const
     return map[pos];
 }
 
+const char &Location::operator [](Vector2U pos) const
+{
+    return map[pos.x()+pos.y()*size.x()];
+}
+
 const Texture &Location::getWallText(TSize texId) const
 {
     return textureDB[texId];
@@ -64,39 +68,40 @@ void Location::removeActor(Actor *actor)
     actor->location = nullptr;
 }
 
-void Location::setMap(const char m[], TSize w, TSize h)
+void Location::setMap(const char m[], Vector2U pos)
 {
-    map.resize(w*h);
-    for(auto i=w;i--;)
-        for(auto j=h;j--;)
-            map[i+w*j] = m[i+w*j];
+    map.resize(pos.x()*pos.y());
+    for(auto i=pos.x();i--;)
+        for(auto j=pos.y();j--;)
+            map[i+pos.x()*j] = m[i+pos.x()*j];
 }
 
-Texture Location::generateMinimap(TSize w, TSize h)
+Texture Location::generateMinimap(Vector2U pos)
 {
-    const auto mapRectH = h/height;
-    const auto mapRectW = w/width;
-    Texture txt({h,w});
+    const auto mapRect = pos/size;
 
-    for(TSize j=0;j<height;++j)
-        for(TSize i=0;i<width;++i)
+    Texture txt(pos);
+
+    for(Vector2U it{0,0};it.y()<size.y();++it.y())
+        for(it.x()=0;it.x()<size.x();++it.x())
         {
-            const auto mapPos = i+j*width;
+            const auto mapPos = it.x()+it.y()*size.x();
             if(map[mapPos] == ' ') continue;
 
-            const TSize rectX = txt.size.x() - (i+1)*mapRectW + 1;
-            const TSize rectY = txt.size.y() - (j+1)*mapRectH + 1;
+            const auto rect = txt.size - (it+1)*mapRect + 1;
 
-            for(auto ki = 0;ki<mapRectW;++ki)
-                for(auto kj = 0;kj<mapRectH;++kj)
-                    txt.set({rectX-ki,rectY-kj},Color::Black);
+            for(Vector2U k{0,0};k.x()<mapRect.x();++k.x())
+                for(k.y()=0;k.y()<mapRect.y();++k.y())
+                    txt.set(rect-k,Color::Black);
         }
 
     return txt;
 }
 
 void Location::update(TReal dt)
-{}
+{
+    (void)dt;
+}
 
 void World::addLocation(Location *l, TString name)
 {

@@ -4,21 +4,10 @@
 #include "color.hpp"
 
 Texture::Texture() :
-      //w(0),
-      //h(0),
       size(0,0)
 {}
-/*
-Texture::Texture(uint32_t width, uint32_t height) :
-      w(width),
-      h(height),
-      size(width,height),
-      img(w*h)
-{}
-*/
+
 Texture::Texture(Vector2U s) :
-      //w(s.x()),
-      //h(s.y()),
       size(s),
       img(s.x()*s.y())
 {
@@ -26,26 +15,19 @@ Texture::Texture(Vector2U s) :
 }
 
 Texture::Texture(const Texture &txt) :
-      //w(txt.w),
-      //h(txt.h),
       size(txt.size),
       img(txt.img)
 {}
 
 Texture::Texture(Texture &&txt) :
-      //w(txt.w),
-      //h(txt.h),
       size(txt.size),
       img(std::move(txt.img))
 {
-    //txt.w = txt.h = 0;
     txt.size = Vector2U{0,0};
 }
 
 Texture &Texture::operator=(const Texture &txt)
 {
-    //w = txt.w;
-    //h = txt.h;
     size = txt.size;
     img = txt.img;
 
@@ -54,32 +36,13 @@ Texture &Texture::operator=(const Texture &txt)
 
 Texture &Texture::operator=(Texture &&txt)
 {
-    //w = txt.w;
-    //h = txt.h;
     size = txt.size;
     img = std::move(txt.img);
-    //txt.w=txt.h=0;
     txt.size = Vector2U{0,0};
 
     return *this;
 }
-/*
-void Texture::set(TSize x, TSize y, uint32_t value)
-{
-    assert(x+y*w < img.size());
-    img[x+y*w] = value;
-}
 
-uint32_t Texture::get(TSize i, TSize j) const
-{
-    return img[i+j*w];
-}
-
-uint32_t Texture::get(TSize i, TSize j, TSize spriteScreenSize) const
-{
-    return get(i*h/spriteScreenSize,j*w/spriteScreenSize);
-}
-*/
 TArray<uint32_t> Texture::getScaledColumn(TSize texCoord, TSize height) const
 {
     TArray<uint32_t> column(height);
@@ -95,12 +58,12 @@ void Texture::set(Vector2U pos, uint32_t value)
     img[pos.x()+pos.y()*size.x()] = value;
 }
 
-uint32_t Texture::get(Vector2U pos) const
+Color Texture::get(Vector2U pos) const
 {
     return img[pos.x()+pos.y()*size.x()];
 }
 
-uint32_t Texture::get(Vector2U pos, TSize spriteScreenSize) const
+Color Texture::get(Vector2U pos, TSize spriteScreenSize) const
 {
     return get(pos*size/spriteScreenSize);
 }
@@ -109,10 +72,8 @@ uint32_t Texture::get(Vector2U pos, TSize spriteScreenSize) const
 
 
 Font::Font(TString filename, uint8_t cw, uint8_t ch, uint8_t th, uint8_t tw, uint8_t i, char startChar) :
-      charWidth(cw),
-      charHeight(ch),
-      tableHeight(th),
-      tableWidth(tw),
+      charSize(cw,ch),
+      tableSize(tw,th),
       indent(i),
       startCharacter(startChar)
 {
@@ -132,28 +93,25 @@ Font::Font(TString filename, uint8_t cw, uint8_t ch, uint8_t th, uint8_t tw, uin
 
 Texture Font::createText(TString text)
 {
-    const auto w = text.size()*charWidth;
-    const auto h = charHeight;
+    auto size = charSize;
+    size.x()*=text.size();
+    Texture txt(size);
 
-    Texture txt({w,h});
-
-    for(auto c=0;c<text.size();++c)
+    for(TSize c=0;c<text.size();++c)
     {
         const int charid = text[c] - startCharacter;
-        const auto tx = charid%tableWidth;
-        const auto ty = charid/tableWidth;
+        const auto t = Vector2I{charid%tableSize.x(),
+                                charid/tableSize.y()};
 
-        for(auto i=0;i<charWidth;++i)
-            for(auto j=0;j<charHeight;++j)
+
+        for(auto it = ByteVec{0,0};it.x()<charSize.x();++it.x())
+            for(it.y()=0;it.y()<charSize.y();++it.y())
             {
-                const auto woffset = (text[c] == 'i' || text[c] == 'I')? 4 : 0; // indent between chars
-                const auto ioffset = (text[c] == 'i' || text[c] == 'I')? 4 : 1; // indent between chars
-                const auto x = tx*(charHeight+indent);
-                const auto y = ty*(charWidth+indent);
-                //Color color = fontTable.get(x+i,y+j);
-                //txt.set(i+c*charWidth+woffset,j,color);
-                Color color = fontTable.get({x+i,y+j});
-                txt.set({i+c*charWidth+woffset,j},color);
+                const ByteVec offset = {(text[c] == 'i' || text[c] == 'I')? TByte(4) : TByte(0),
+                                        (text[c] == 'i' || text[c] == 'I')? TByte(4)  : TByte(1)};
+                const auto pos = t*(charSize+indent);
+                Color color = fontTable.get(pos + it);
+                txt.set({TSize(it.x()+c*charSize.x()+offset.x()), TSize(it.y())},color);
             }
     }
 

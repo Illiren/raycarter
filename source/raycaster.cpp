@@ -9,7 +9,8 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
       viewport(winSize),
       keyMap(GetInputManager()),
       rm(RM()),
-      currentMode(None)
+      currentMode(None),
+      ss(soundSystem())
 {
     GetInputManager()['a'].keydownEvent = [this](){turnLeft();};
     GetInputManager()['a'].keyupEvent = [this](){turnStop();};
@@ -22,9 +23,11 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
     GetInputManager()['s'].keyupEvent = [this](){moveStop();};
 
     GetInputManager()['e'].keyupEvent = [this](){interact();};
+    GetInputManager()['c'].keydownEvent = [this](){scream();};
+    GetInputManager()['c'].keyupEvent = [this](){shutup();};
 
-    GetInputManager()[SDLK_LSHIFT].keydownEvent = [this](){sprintOn();};
-    GetInputManager()[SDLK_LSHIFT].keyupEvent = [this](){sprintOff();};
+    GetInputManager()[SDLK_LSHIFT].keydownEvent = [this](){sprintOn(); /*scream();*/};
+    GetInputManager()[SDLK_LSHIFT].keyupEvent = [this](){sprintOff(); /*shutup();*/};
 
 
     rm.loadTexture("monsters.bmp",4,"avatar");
@@ -32,12 +35,23 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
     rm.loadTexture("weapon.bmp", "weapon");
 
     rm.loadAudio("test.wav","test");
+    //rm.loadAudio("aaaaa.wav","aaaa");
 
     viewport.playerFace = *rm.texture("player").lock().get();
     viewport.hudWeapon = *rm.texture("weapon").lock().get();
 
     //auto drake = new NPC_Drake(textureDB["avatar0"]);
     //drake->position = {4.0f, 13.4f};
+
+#ifdef DEBUG
+    viewport.dt = 0.1f;
+#endif
+
+    auto sound = rm.sound("test").lock().get();
+    ss.setVolume(0.1f);
+
+    se.setSound(sound);
+    se.setVolume(1.f);
 }
 
 RayCarter::~RayCarter()
@@ -76,7 +90,7 @@ void RayCarter::initPlayer(Mode mode)
         viewport.setCamera(player->camera);
         controller = player->movementComponent;
         player->camera->camera.fov = 1.f;
-        player->camera->camera.distance = 5;
+        player->camera->camera.distance = 20;
         player->direction = 1;
 
         world["level0"]->addActor(player);
@@ -222,6 +236,8 @@ void RayCarter::update(TReal lag)
     GC().update(lag);
     GC().collect(false);
 
+    se.update(lag);
+    ss.update(lag);
 
     if(currentMode == Multiplayer && controller->isValid())
     {        
@@ -284,6 +300,16 @@ void RayCarter::sprintOff()
 void RayCarter::interact()
 {
     if(controller) dynamic_cast<Player*>(controller->getOwner())->doInteract();
+}
+
+void RayCarter::scream()
+{
+    se.play();
+}
+
+void RayCarter::shutup()
+{
+    se.stop();
 }
 
 Player *RayCarter::desc2Actor(const PlayerDescription &desc)

@@ -5,16 +5,16 @@
 #include <map>
 #include <iostream>
 
-int Viewport::wall2texcoord(TReal hx, TReal hy, int tw)
+int Viewport::wall2texcoord(Vector2D h, int tw)
 {
-    TReal x = hx - floor(hx+.5);
-    TReal y = hy - floor(hy+.5);
+    auto pos = h - Vector2D{floor(h.x()+.5f),floor(h.y()+.5f)};
 
-    int tex = x * tw;
-    if(abs(y) > abs(x))
-        tex = y*tw;
+    int tex = pos.x()*tw;
+    if(abs(pos.y()) > abs(pos.x()))
+        tex = pos.y()*tw;
     if(tex < 0)
         tex+=tw;
+
     return tex;
 }
 
@@ -47,9 +47,8 @@ void Viewport::drawSprite(const Sprite &sprite)
         for(TSize j=0;j<spriteScreenSize;++j)
         {
             if(vOffset+int(j)<0 || vOffset+j>=_height) continue;
-            //Color color = texture->get(i,j,spriteScreenSize);
             Color color = texture->get({i,j},spriteScreenSize);
-            if(color.alpha() > 128)
+            if(color.a() > 128)
             {
                 const auto x = hOffset+i;
                 const auto y = vOffset+j;
@@ -62,10 +61,11 @@ void Viewport::drawSprite(const Sprite &sprite)
 
 Viewport::Viewport(Rectangle2D<TSize> rect, Window *parent) :
       Window(rect,parent),
+      mapSize{100,100},
       depthBuffer(_width,1e3),
-      screen(GetScreen()),
-      _font("smallfont.bmp",15,15,16,16,1,' '),
-      mapSize{100,100}
+      screen(GetScreen()),      
+      _font("smallfont.bmp",15,15,16,16,1,' ')
+
 {
     screen.resize(_width,_height);
     if(!screen.init())
@@ -84,13 +84,11 @@ void Viewport::setCamera(CameraComponent *cam)
 
 void Viewport::drawWorld()
 {
-    auto location = actor->location;
+    auto location = actor->location;    
 
-    _minimap = std::move(location->generateMinimap(mapSize.x(), mapSize.y()));
-    _mapRect = mapSize/Vector2U{location->width, location->height};
-    auto mapRectSize = mapSize/Math::Vector2D<TSize>(location->height,location->width);
-    //Math::Vector2D<TSize> minimapSize(_minimap.w,_minimap.h);
-    Math::Vector2D<TSize> minimapSize(_minimap.size);
+    _minimap = location->generateMinimap(mapSize);
+    _mapRect = mapSize/location->size;
+    auto mapRectSize = mapSize/location->size;
 
     if(!actor->location) return;
     for(auto &i : depthBuffer)
@@ -103,7 +101,8 @@ void Viewport::drawWorld()
     const auto distance = camera->distance;
 
     // Draw Floor and Ceiling
-    const auto dirRotator = Vector2D(std::cos(direction),std::sin(direction));
+    const auto dirRotator = Vector2D(std::cos(direction),
+                                     std::sin(direction));
 
     const Vector2D rayDir0(dirRotator.x() + dist*dirRotator.y(),
                            dirRotator.y() - dist*dirRotator.x());
@@ -112,49 +111,47 @@ void Viewport::drawWorld()
                            dirRotator.y() + dist*dirRotator.x());
 
     auto diff = (rayDir1 - rayDir0)/_width;
-    //const Math::Vector2D<int> texsize(location->floor.w, location->floor.h);
-    const Math::Vector2D<int> texsize(location->floor.size.x(), location->floor.size.y());
 
-    const auto minHeight = static_cast<TSize>(_height/distance);
+    const auto minHeight = static_cast<TSize>(_height/distance)+5;
     screen.drawRectangle({0,_height/2-minHeight/2},_width,minHeight,Color(20,20,20));
+
 
     // Wall Casting
 #if __PARALLEL == 1
 #pragma omp parallel for
 #endif
+
     for(TSize i=0;i<_width;++i)
     {
+        LinearColor darkness(0.f,0.f,0.f,0.0f);
         const float angle = direction - fov/2 + fov*i/float(_width);
         Vector2D rotator(std::cos(angle),
                          std::sin(angle));
 
-        TSize columnH = minHeight; //if not hit, then draw froor and cells for minHeight
+        TSize columnH = minHeight; //if not hit, then draw froor and cells for minHeight        
+
         //Trace for distance of view
-        for(TReal t=0.f; t<distance; t+=.01f)
+        TReal t=0.f;
+        for(;t<distance; t+=dt)
         {
             const auto distPos = pos + rotator*t;
 
-            const auto mapPos = static_cast<int>(distPos.x()) +
-                                static_cast<int>(distPos.y()) *
-                                static_cast<int>(location->width);
-
             //Mini Map Sight of View
-            const auto pixPos = minimapSize-static_cast<Math::Vector2D<TSize>>((distPos+1)*static_cast<Vector2D>(mapRectSize))+2;
-            //_minimap.set(pixPos.x(),pixPos.y(),Color(160,160,160,160));
-            _minimap.set({pixPos.x(),pixPos.y()},Color(160,160,160,160));
+            const auto pixPos = _minimap.size-((distPos+1)*mapRectSize)+2;
+
+            _minimap.set(pixPos,Color(160,160,160,160));
 
             // if something on the way. Wall most likely
-            if((*location)[mapPos] != ' ')
+            if((*location)[distPos] != ' ')
             {
                 const auto dist = t*std::cos(angle-direction);
                 depthBuffer[i] = dist;
                 columnH = TSize(_height/dist);
 
-                const auto itex = (*location)[mapPos] - '0';
+                const auto itex = (*location)[distPos] - '0';
                 auto tex = location->getWallText(itex);
 
-                //auto xtex = wall2texcoord(distPos.x(),distPos.y(),tex.w);
-                auto xtex = wall2texcoord(distPos.x(),distPos.y(),tex.size.x());
+                auto xtex = wall2texcoord(distPos,tex.size.x());
 
                 TArray<uint32_t> column = tex.getScaledColumn(xtex, columnH);
 
@@ -162,44 +159,58 @@ void Viewport::drawWorld()
                 {
                     TSize py = j + _height/2 - columnH/2;
                     if(py>=0 && py < _height)
-                        screen.drawPoint({i,py},Color(column[j]));
+                    {
+                        const TReal percent = (10/distance)*t;
+                        darkness.a()=percent;
+                        LinearColor color = Color(column[j]);
+                        color.a() = 0.5f;
+                        color+=darkness;
+                        screen.drawPoint({i,py},color);
+                    }
                 }
 
                 break;
             }
         }
 
+
         //Around walls draw cells and floors
+        const TReal range = _height - _height/2;
         for(TSize j=_height/2+columnH/2; j<_height; ++j)
-        {
-            TReal rowDistance = _height/(2.f*(j-_height/2)); //hyperbola, close to middle - farest
+        {            
+            const TReal rowDistance = _height/(2.f*(j-_height/2)); //hyperbola, close to middle - farest
+            const TReal percent = (100.f/range)*(j-_height/2.f);
+            darkness.a()=1.f-percent/100.f;
 
             const auto floorStep = rowDistance * diff;
             auto floorPos = pos + rayDir0 * rowDistance;
 
             auto floorjpos = floorPos + (floorStep*i);
-            Math::Vector2D<int> cellTexPos = floorjpos;
-            Math::Vector2D<int> t = static_cast<Vector2D>(texsize)*(floorjpos-static_cast<Vector2D>(cellTexPos));
-            t&=(texsize-1); // limit by texsize size. if texsize == 64 then only 5 bit integer will be used ( 64-1 = 0x00111111), otherwise it will be overflow in some conditions
+            const Vector2I cellPos = floorjpos;
+            Vector2I texPos = static_cast<Vector2F>(location->floor.size)*(floorjpos-cellPos);
+            texPos&=(location->floor.size-1); // limit by texsize size. if texsize == 64 then only 5 bit integer will be used ( 64-1 = 0x00111111), otherwise it will be overflow in some conditions
 
-            //auto color = location->floor.get(t.x(),t.y());
-            auto color = location->floor.get(t);
-
-            color = (color>>1) & 8355711; //Darker
+            //Floor
+            LinearColor color = location->floor.get(texPos);
+            color.a() = 0.1f;
+            color+=darkness;
             screen.drawPoint({i,j},color);
-            //color = location->ceil.get(t.x(),t.y());
-            color = location->ceil.get(t);
+
+            //Ceil
+            color = location->ceil.get(texPos);
+            color.a() = 0.1f;
+            color+=darkness;
             screen.drawPoint({i,_height-j-1},color);
         }
     }
 
 
     //Player on minimap
-    const auto playerPos = minimapSize-pos*mapRectSize;
-    for(TSize i=_mapRect.x();i--;)
-        for(TSize j=_mapRect.y();j--;)
-            //_minimap.set(playerPos.x()-i,playerPos.y()-j,Color::Black);
-            _minimap.set({playerPos.x()-i,playerPos.y()-j},Color::Black);
+    const auto playerPos = _minimap.size-pos*mapRectSize;
+    Vector2U it;
+    for(it.x()=_mapRect.x();it.x()--;)
+        for(it.y()=_mapRect.y();it.y()--;)
+            _minimap.set(playerPos-it,Color::Black);
 }
 
 void Viewport::drawActors()
@@ -223,15 +234,6 @@ void Viewport::drawActors()
 
 void Viewport::drawHUD()
 {
-    /*
-    screen.drawRectangle({0,_height-mapSize.y()+_mapRect.y()/2+1},_width,mapSize.y(),Color(100,200,100));
-    screen.drawTexture(_minimap,{0,_height-_minimap.h+_mapRect.y()/2+1});
-
-    const Point2D posA = {_width/2-(hudWeapon.w/2-20)*2,_height-_minimap.h-static_cast<TSize>(hudWeapon.h*1.5f)};
-    const Point2D posB = {_width/2+(hudWeapon.w/2)*2, _height-_minimap.h+_mapRect.y()/2+1};
-    screen.drawTexture(hudWeapon,{posA,posB},0.5f,0.5f);
-
-    const Point2D posC {_width/2-playerFace.w/4,_height-static_cast<TSize>(playerFace.h/2.7f)};*/
     screen.drawRectangle({0,_height-mapSize.y()+_mapRect.y()/2+1},_width,mapSize.y(),Color(100,200,100));
     screen.drawTexture(_minimap,{0,_height-_minimap.size.y()+_mapRect.y()/2+1});
 

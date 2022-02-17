@@ -6,7 +6,7 @@
 
 class AudioDB
 {
-    using TShared = std::shared_ptr<Wav>;
+    using TShared = std::shared_ptr<Sound>;
     using TMapData = std::unordered_map<TString, TShared>;
 public:
     AudioDB();

@@ -4,8 +4,9 @@
 #include <list>
 
 
-struct GarbageCollector
+class GarbageCollector
 {
+public:
     void collect(bool verbose);
     void update(TReal dt);
 

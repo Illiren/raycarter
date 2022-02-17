@@ -55,17 +55,26 @@ class NPC_Drake : public Pawn
 {
 public:
     NPC_Drake() :
-          Pawn(),
-          sound(RM().sound("test"))
-    {}
+          Pawn()
+    {
+        sound.setSound(RM().sound("test").lock().get());
+        sound.setLooping(false);
+    }
+
+    void update(float ms) override
+    {
+        Pawn::update(ms);
+        sound.update(ms);
+    }
 
 private:
-    SoundSequence sound;
+    SoundEmitter sound;
 
     // NActor interface
 public:
     void onInterract(Actor *causer) override
     {
+        (void)causer; //Unused
         sound.play();
     }
 };
@@ -117,6 +126,8 @@ private:
     void sprintOn();
     void sprintOff();
     void interact();
+    void scream();
+    void shutup();
 
     THashMap<uint32_t, Player*> playerMap;
 
@@ -127,6 +138,10 @@ private:
     void updateActor(Player *player, const PlayerDescription &desc);
     Player *findPlayer(uint32_t playerID);
 
+
+    //INFO Sound System Test
+    SoundSystem &ss;
+    SoundEmitter se;
 
 private:
     void physX();

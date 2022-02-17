@@ -11,6 +11,7 @@
 
 #define normal   //for symmetry (short int, normal int, long int)
 
+using TByte = unsigned char;
 using TReal = float;
 using TUInt8 = unsigned char;
 using TSize = std::size_t;

@@ -15,6 +15,11 @@ public:
         Pause = 2,
     };
 
+    GameLoop()
+    {
+        static_assert(true, "Wrong use of the class. Inheritance needed");
+    }
+
 protected:
     GameLoop(TReal fpsimit = 60.f) :
           _state(Idle),

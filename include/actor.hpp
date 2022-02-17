@@ -5,9 +5,9 @@
 #include "game_object.hpp"
 
 class Actor;
-class Location;
+struct Location;
 
-class ActorComponent : public GameObject
+struct ActorComponent : public GameObject
 {
 public:
     ActorComponent(Actor *actorParent);
@@ -28,8 +28,8 @@ public:
     ~Actor() override;
 
     FRectangle2D getCollisionBody() const noexcept;
-    virtual void onInterract(Actor *causer) {}
-    virtual void onCollision(Actor *causer) {}
+    virtual void onInterract(Actor *causer) {(void)causer;} //Unused
+    virtual void onCollision(Actor *causer) {(void)causer;} //Unused
     TReal    direction;
     Vector2D position;
     Location *location;
@@ -38,7 +38,7 @@ public:
 private:
     ComponentList components;
 
-    friend class ActorComponent;
+    friend struct ActorComponent;
 
     // GameObject interface
 public:
@@ -72,6 +72,7 @@ public:
 
 struct CameraComponent : public ActorComponent
 {
+public:
     CameraComponent(Actor *parent);
 
     Camera camera;

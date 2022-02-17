@@ -10,15 +10,21 @@
 #include "location.hpp"
 
 
-extern constexpr bool ReleaseBuild = (_DEBUGMODE == 0);
+//extern constexpr bool ReleaseBuild = (_DEBUGMODE == 0);
 
-
+/*
 template<typename T, typename ExceptionType = std::exception>
 inline void validate(T &&assertion, const ExceptionType exception = {})
 {
     if constexpr (!ReleaseBuild)
         if(!assertion)
             throw exception;
+}*/
+
+template<typename T>
+constexpr inline T adjust(T min, T max, T value)
+{
+    return std::min(max,std::max(min,value));
 }
 
 
@@ -155,13 +161,15 @@ public:
         if(_current->onUpdate) _current->onUpdate();
     }
 
+    //TODO: Allocator for states
+
 private:
     const State*   _current;
     StateMap _states;
 };
 
 
-
+/*
 struct Serializable
 {
     template<typename T>    
@@ -183,11 +191,11 @@ struct Serializable
         return nullptr;
     }
 };
+*/
 
 
 
-
-
+/*
 TArray<Vector2D> findpath(const Location &loc, Vector2D start, Vector2D end)
 {
     using TCoord = Math::Vector2D<TSize>;
@@ -279,7 +287,7 @@ protected:
     TMapData _data;
 };
 
-
+*/
 
 
 

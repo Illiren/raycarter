@@ -85,6 +85,9 @@ template<typename T>
 using Circle2D = Circle<T,2>;
 
 template<typename T>
+using Sphere = Circle<T,3>;
+
+template<typename T>
 inline constexpr bool intersect(const Math::Vector<T,2> &p, const Rectangle2D<T> &rect) noexcept
 {
     if(p.x() > rect.topleft.x() &&
@@ -105,6 +108,24 @@ inline constexpr bool intersect(const Math::Vector<T,2> &p, const Circle2D<T> &c
     if(dx+dy<=crcl.radius) return true;
     return dx*dx + dy*dy <= crcl.radius*crcl.radius;
 }
+
+
+template<typename T>
+inline constexpr bool intersect(const Math::Vector3D<T> &p, const Sphere<T> &sphr) noexcept
+{
+    const T dx = std::abs(p.x() - sphr.origin.x());
+    const T dy = std::abs(p.y() - sphr.origin.y());
+    const T dz = std::abs(p.z() - sphr.origin.z());
+    if((dx > sphr.radius) ||
+       (dy > sphr.radius) ||
+       (dz > sphr.radius))
+        return false;
+
+    if(dx+dy+dz <= sphr.radius) return true;
+
+    return dx*dx + dy*dy + dz*dz <= sphr.radius*sphr.radius;
+}
+
 
 //AABB Algorithm
 template<typename T>

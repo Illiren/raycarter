@@ -16,7 +16,7 @@ struct Camera
 };
 
 
-class CameraComponent;
+struct CameraComponent;
 class Actor;
 
 class Viewport : public Window
@@ -26,8 +26,9 @@ public:
 
     void setCamera(CameraComponent *cam);
 
-    Math::Vector2D<TSize> mapSize;
+    Vector2U mapSize;
     TSize fps = 0;
+    TReal dt = 0.01f;
 
     //GUI
     Texture hudWeapon;
@@ -40,8 +41,10 @@ private:
     TArray<float> depthBuffer;
     Screen &screen;
 
+
     void drawSprite(const Sprite &sprite);
-    static int wall2texcoord(TReal hx, TReal hy, int tw);
+    static int wall2texcoord(Vector2D h, int tw);
+
 
     //GUI
     Font  _font;

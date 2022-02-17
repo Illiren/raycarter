@@ -248,7 +248,7 @@ void Screen::drawTexture(const Texture &text, Point2D p, TReal hs, TReal ws)
         {
             //Color color = text.get(i*h/hscale,j*w/wscale);
             Color color = text.get({i*h/hscale,j*w/wscale});
-            if(color.alpha() > 127)
+            if(color.a() > 127)
             {
                 const auto x = xoffset+i;
                 const auto y = yoffset+j;
@@ -282,7 +282,7 @@ void Screen::drawTexture(const Texture &text, Rectangle2D<TSize> p, TReal hs, TR
             const auto x = orig.x() + i;
             const auto y = orig.y() + j;
 
-            const bool cond = (color.alpha() > 128) && (x < end.x()) && (y < end.y());
+            const bool cond = (color.a() > 128) && (x < end.x()) && (y < end.y());
             if(cond)
                 drawPoint({x,y}, color);
         }

@@ -5,554 +5,287 @@
 #include <AL/alc.h>
 #include <bit>
 #include <cstring>
+#include "utility.hpp"
 
 
-bool checkALErrors(const TString &filename, const std::uint_fast32_t line)
+void SoundSystem::setVolume(float value)
 {
-    ALenum error;
-    error = alGetError();
-
-    if(error != AL_NO_ERROR)
-    {
-        std::cout << "Error " << filename << ": " << line << "\n";
-        switch (error)
-        {
-        case AL_INVALID_NAME:
-            std::cout << "Invalid name: a bad name (ID) was passed to an OpenAL function";
-            break;
-        case AL_INVALID_ENUM:
-            std::cout << "Invalid enum: an invalid enum value was passed to an OpenAL function";
-            break;
-        case AL_INVALID_VALUE:
-            std::cout << "Invalid enum: an invalid enum value was passed to an OpenAL function";
-            break;
-        case AL_INVALID_OPERATION:
-            std::cout << "Invalid operation: the requested operation is not valid";
-            break;
-        case AL_OUT_OF_MEMORY:
-            std::cout << "Out of memory: the requested operation resulted in OpenAL running out of memory";
-            break;
-        default:
-            std::cout << "Unknown AL Error: " << error;
-            break;
-        }
-        std::cout << std::endl;
-        return false;
-    }
-    return true;
+    _masterVolume = adjust(0.f,1.f,value);
+    alListenerf(AL_GAIN,_masterVolume);
 }
 
-bool checkALCErrors(const TString &filename, const std::uint_fast32_t line, ALCdevice* device)
+void SoundSystem::setListenerPos(Math::Vector3D<float> pos)
 {
-    ALCenum error;
-    error = alcGetError(device);
-
-    if(error != ALC_NO_ERROR)
-    {
-        std::cout << "Error " << filename << ": " << line << "\n";
-        switch (error)
-        {
-        case ALC_INVALID_DEVICE:
-            std::cout << "Invalid device: a bad device was passed to an OpenAL function";
-            break;
-        case ALC_INVALID_ENUM:
-            std::cout << "Invalid enum: an invalid enum value was passed to an OpenAL function";
-            break;
-        case ALC_INVALID_CONTEXT:
-            std::cout << "Invalid context: a bad context was passed to an OpenAL function";
-            break;
-        case ALC_INVALID_VALUE:
-            std::cout << "Invalid enum: an invalid enum value was passed to an OpenAL function";
-            break;
-        case ALC_OUT_OF_MEMORY:
-            std::cout << "Out of memory: the requested operation resulted in OpenAL running out of memory";
-            break;
-        default:
-            std::cout << "Unknown ALC Error: " << error;
-            break;
-        }
-        std::cout << std::endl;
-        return false;
-    }
-    return true;
+    _listenerPosition = pos;
+    alListener3f(AL_POSITION, _listenerPosition.x(),_listenerPosition.y(),_listenerPosition.z());
 }
 
-template<typename alcFunction, typename... Params>
-auto alcCallImpl(const char *filename,
-                 const std::uint_fast32_t line,
-                 alcFunction function,
-                 ALCdevice *device,
-                 Params... params)
-    -> typename std::enable_if_t<std::is_same_v<void, decltype(function(params...))>, bool>
-{
-    function(std::forward<Params>(params)...);
-    return checkALCErrors(filename, line, device);
-}
-
-template<typename alcFunction, typename ReturnType, typename... Params>
-auto alcCallImpl(const char *filename,
-                 const std::uint_fast32_t line,
-                 alcFunction function,
-                 ReturnType &returnValue,
-                 ALCdevice *device,
-                 Params... params)
-    -> typename std::enable_if_t<!std::is_same_v<void, decltype(function(params...))>, bool>
-{
-    returnValue = function(std::forward<Params>(params)...);
-    return checkALCErrors(filename, line, device);
-}
-
-template<typename alcFunction, typename... Params>
-auto alCallImpl(const char *filename,
-                const std::uint_fast32_t line,
-                alcFunction function,
-                Params... params)
-    -> typename std::enable_if_t<std::is_same_v<void, decltype(function(params...))>, bool>
-{
-    function(std::forward<Params>(params)...);
-    return checkALErrors(filename, line);
-}
-
-template<typename alcFunction, typename ReturnType, typename... Params>
-auto alCallImpl(const char *filename,
-                 const std::uint_fast32_t line,
-                 alcFunction function,
-                 ReturnType &returnValue,
-                 Params... params)
-    -> typename std::enable_if_t<!std::is_same_v<void, decltype(function(params...))>, bool>
-{
-    returnValue = function(std::forward<Params>(params)...);
-    return checkALErrors(filename, line);
-}
-
-#define alCall(function, ...) alCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
-#define alcCall(function, ...) alcCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
-
-std::int32_t convertToInt(char *buffer, std::size_t len)
-{
-    std::int32_t a = 0;
-    if(std::endian::native == std::endian::little)
-        std::memcpy(&a, buffer, len);
-    else
-        for(std::size_t i = 0; i < len; ++i)
-            reinterpret_cast<char*>(&a)[3-i]=buffer[i];
-    return a;
-}
-
-bool loadWAV(std::ifstream &file,
-             std::uint8_t &channels,
-             std::int32_t &sampleRate,
-             std::uint8_t &bitPerSample,
-             ALsizei &size)
+SoundSystem::SoundSystem(unsigned int channels)
 {
     using namespace std;
 
-    if(!file.is_open())
+    cout << "Sound system init" << endl;
+    cout << "Found sound devices: " << alcGetString(nullptr,ALC_DEVICE_SPECIFIER) << endl;
+
+    _device = alcOpenDevice(nullptr);
+    if(!_device)
     {
-        cout << "Could'n open the file" << endl;
-        return false;
-    }
-
-    char buffer[4];
-
-    if(!file.read(buffer,4))
-    {
-        cout << "Could'n read RIFF" << endl;
-        return false;
-    }
-
-    if(std::strncmp(buffer,"RIFF",4) != 0)
-    {
-        cout << "RIFF is not RIFF" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,4))
-    {
-        cout << "Could'n read size of file" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,4))
-    {
-        //Error could not read wave
-        cout << "Couldn't read WAVE" << endl;
-        return false;
-    }
-
-    if(std::strncmp(buffer, "WAVE",4) != 0)
-    {
-        cout << "WAVE is not WAVE" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,4)) //read fmt/0
-    {
-        cout << "Couldn't read fmt" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,4)) // this is always 16,
-    {
-        cout << "Couldn't read the 16" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,2))
-    {
-        //PCM
-        cout << "Couldn't read the PCM" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,2)) // channels count
-    {
-        cout << "Couldn't read channels count" << endl;
-        return false;
-    }
-
-    channels = convertToInt(buffer,2);
-
-    //sample rate
-    if(!file.read(buffer, 4))
-    {
-        cout << "Couldn't read sample rate" << endl;
-        return false;
-    }
-
-    sampleRate = convertToInt(buffer,4);
-
-    if(!file.read(buffer,4))
-    {
-        cout << "couldn't read something" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,2))
-    {
-        cout << "couldn't read dafaq" << endl;
-        return false;
-    }
-
-    if(!file.read(buffer,2))
-    {
-        cout << "Couldn't read bits per sample" << endl;
-        return false;
-    }
-
-    bitPerSample = convertToInt(buffer,2);
-
-    //data chunk header "data"
-    if(!file.read(buffer,4))
-    {
-        cout << "Couldn't read data header" << endl;
-        return false;
-    }
-
-    file.read(buffer,4); // LIST
-    file.read(buffer,4); // ....
-    file.read(buffer,4); // INFO
-    file.read(buffer,4); // ISFT
-    file.read(buffer,4); // ....
-    file.read(buffer,4); // Lavf
-    file.read(buffer,4); // 58.2
-    file.read(buffer,4); // 9.10
-    file.read(buffer,2); // 0.
-
-    if(std::strncmp(buffer,"tada",4) != 0)
-    {
-        cout << "Data is not data" << endl;
-        return false;
-    }
-
-    //size of data
-    if(!file.read(buffer,4))
-    {
-        cout << "Couldn't size of data" << endl;
-        return false;
-    }
-
-    size = convertToInt(buffer,4);
-
-    if(file.eof())
-    {
-        cout << "Unexpected eof" << endl;
-        return false;
-    }
-
-    if(file.fail())
-    {
-        cout << "fail state set on the file" << endl;
-        return false;
-    }
-
-    return true;
-}
-
-Wav::Wav(TString filename)
-{
-    std::ifstream in(filename, std::ios::binary);
-
-    if(!loadWAV(in,channel,sampleRate,bitPerSample,size))
-    {
-        std::cout << "Could not load wav header of " << filename << std::endl;
+        cout << "Sound system creation has failed! No Valid Device!" << endl;
         return;
     }
 
-    data.resize(size);
-    in.read(data.data(),size);
+    cout << "Sound System created with device: "
+         << alcGetString(_device,ALC_DEVICE_SPECIFIER) << endl;
+
+    _context = alcCreateContext(_device,nullptr);
+    alcMakeContextCurrent(_context);
+    //alDistanceModel(AL_LINEAR_DISTANCE_CLAMPED);
+
+    _sources.resize(channels);
+
+    cout << "Sound system has " << _sources.size()
+         << " channels available!" << endl;
 }
 
-Wav::operator bool() const noexcept
+SoundSystem::SoundSource *SoundSystem::getFreeSource()
 {
-    return !data.empty();
+    for(auto &source : _sources)
+        if(!source._inUse) { source._inUse = true; return &source;}
+
+    return nullptr;
 }
 
-
-std::weak_ptr<bool> Audio::play(PSound wav, bool repeatable)
+void SoundSystem::update(float msec)
 {
-    std::shared_ptr<bool> sharedBool(new bool);
+    (void)msec;
+    _frameEmitters.clear();
 
-    enqueue([this, wav, repeatable, sharedBool]()
-            {
-                if(wav.expired())
-                {
-                    std::cout << "Error sound is expired " << std::endl;
-                    return;
-                }
-                auto sound = wav.lock();
-                const auto channel = sound->channel;
-                const auto bitPerSample = sound->bitPerSample;
-                const auto data = sound->data.data();
-                const auto size = sound->data.size();
-                const auto sampleRate = sound->sampleRate;
-                ALuint buffer;
-                alCall(alGenBuffers,1,&buffer);
-                ALenum format;
-                if(channel == 1 && bitPerSample == 8)
-                    format = AL_FORMAT_MONO8;
-                else if(channel == 1 && bitPerSample == 16)
-                    format = AL_FORMAT_MONO16;
-                else if(channel == 2 && bitPerSample == 8)
-                    format = AL_FORMAT_STEREO8;
-                else if(channel == 2 && bitPerSample == 16)
-                    format = AL_FORMAT_STEREO16;
-                else
-                {
-                    //Error
-                    return;
-                }
-                alCall(alBufferData, buffer, format, data, size, sampleRate);
+    for(auto &emitter : _emitters)
+        if(intersect(_listenerPosition,emitter->_position))
+            _frameEmitters.push_back(emitter);
 
-                ALuint source;
-                alCall(alGenSources,1,&source);
-                alCall(alSourcef, source, AL_PITCH, 1);
-                alCall(alSource3f, source, AL_POSITION, 0,0,0);
-                alCall(alSource3f, source, AL_VELOCITY, 0,0,0);
-                alCall(alSourcei, source, AL_LOOPING, AL_FALSE);
-                alCall(alSourcei, source, AL_BUFFER, buffer);
-                alCall(alSourcePlay, source);
+    if(_frameEmitters.empty()) return;
 
-                ALint state = AL_PLAYING;
-                *sharedBool = true;
-                while(state == AL_PLAYING && (*sharedBool == true))
-                {
-                    alCall(alGetSourcei, source, AL_SOURCE_STATE, &state);
-                }
+    std::sort(_frameEmitters.begin(), _frameEmitters.end(),
+              [](SoundEmitter *lhs, SoundEmitter *rhs) -> bool {return (*lhs) > (*rhs); });
 
-                alCall(alDeleteSources,1,&source);
-                alCall(alDeleteBuffers,1,&buffer);
-            });
-    return sharedBool;
-}
-
-std::weak_ptr<bool> Audio::playTest(PSound wav, bool repeatable)
-{
-    uint64_t enqueued = 0;
-    while(_running)
+    if(_frameEmitters.size() > _sources.size())
     {
-        ALint off;
-
-        //alGetSourcei()
-
-    }
-}
-
-void Audio::enqueue(const Task &f)
-{
-    {
-        std::unique_lock<TMutex> lock(_queueMutex);
-        if(!_running)
-            throw std::runtime_error("Enqueued on stopped thread pool");
-        _tasks.emplace(f);
-    }
-    _cond.notify_one();
-}
-
-void Audio::enqueue(Task &&f)
-{
-    {
-        std::unique_lock<TMutex> lock(_queueMutex);
-        if(!_running)
-            throw std::runtime_error("Enqueued on stopped thread pool");
-        _tasks.emplace(std::move(f));
-    }
-    _cond.notify_one();
-}
-
-Audio::Audio()
-{
-    openALDevice = alcOpenDevice(nullptr);
-    if(!openALDevice)
-    {
-        std::cout << "Audio error: couldn't open device" << std::endl;
-        return;
-    }
-
-    if(!alcCall(alcCreateContext,openALContext,openALDevice,openALDevice, nullptr) || !openALContext)
-    {
-        std::cout << "Audio error: couldn't create context" << std::endl;
-        return;
-    }
-
-    contextMadeCurrent = false;
-    if(!alcCall(alcMakeContextCurrent,contextMadeCurrent,openALDevice,openALContext) || contextMadeCurrent != ALC_TRUE)
-    {
-        std::cout << "Audio error: couldn't make context current" << std::endl;
-        return;
-    }
-
-    TSize threads = std::max(Thread::hardware_concurrency(), 1u);
-    _running = true;
-    for(TSize i=0;i<threads;++i)
-    {
-        _worker.emplace_back(
-            [this]
-            {
-                while(true)
-                {
-                    Task task;
-
-                    {
-                        std::unique_lock<TMutex> lock(this->_queueMutex);
-                        this->_cond.wait(lock, [this] {return !this->_running || !this->_tasks.empty();});
-
-                        if(!this->_running && this->_tasks.empty())
-                            return;
-                        task = std::move(_tasks.front());
-                        this->_tasks.pop();
-                    }
-
-                    task();
-                }
-            });
-    }
-}
-
-Audio::~Audio()
-{
-    {
-        std::unique_lock<TMutex> lock(_queueMutex);
-        _running = false;
-    }
-
-    _cond.notify_all();
-
-    for(auto &worker : _worker)
-        worker.join();
-
-    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, nullptr);
-    alcCall(alcDestroyContext,openALDevice, openALContext);
-    ALCboolean closed;
-    alcCall(alcCloseDevice, closed, openALDevice, openALDevice);
-}
-
-Audio &GetAudio()
-{
-    static Audio audio;
-    return audio;
-}
-
-SoundSequence::SoundSequence(PSound s) :
-      sound(s)
-{}
-
-void SoundSequence::play()
-{
-    if(sound.expired())
-        return; //No sound
-
-    auto &a = GetAudio();
-
-    if(playstate.expired())
-    {
-        playstate = a.play(sound);
+        detachSources(_frameEmitters.begin() + _sources.size(), _frameEmitters.end());
+        attachSources(_frameEmitters.begin(), _frameEmitters.begin() + _sources.size());
     }
     else
     {
-        *(playstate.lock())=false;
-        playstate = a.play(sound);
+        attachSources(_frameEmitters.begin(), _frameEmitters.end());
     }
+
+    for(auto &source : _sources)
+        if(source.inUse())
+        {
+            ALint state;
+            alGetSourcei(source._sourceid,AL_SOURCE_STATE, &state);
+            if(state == AL_INITIAL)
+                alSourcePlay(source._sourceid);
+        }
 }
 
-bool SoundSequence::isPlayed() const {return !playstate.expired();}
-
-
-
-
-
-
-
-
-
-
-
-AudioTest::AudioTest()
+void SoundSystem::attachSources(TEmitterList::iterator from, TEmitterList::iterator to)
 {
-    openALDevice = alcOpenDevice(nullptr);
-    alcCall(alcCreateContext, openALContext, openALDevice,openALDevice,nullptr);
-    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, openALContext);
-}
-
-AudioTest::~AudioTest()
-{
-    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, nullptr);
-    alcCall(alcDestroyContext,openALDevice, openALContext);
-    ALCboolean closed;
-    alcCall(alcCloseDevice, closed, openALDevice, openALDevice);
-}
-
-void AudioTest::play(const Wav &wav)
-{
-    ALuint buffers[NumBuffers];
-    alCall(alGenBuffers, NumBuffers, &buffers[0]);
-
-    const auto channel = wav.channel;
-    const auto bitPerSample = wav.bitPerSample;
-    const auto data = wav.data;
-    const auto size = wav.size;
-    const auto sampleRate = wav.sampleRate;
-
-    ALenum format;
-    if(channel == 1 && bitPerSample == 8)
-        format = AL_FORMAT_MONO8;
-    else if(channel == 1 && bitPerSample == 16)
-        format = AL_FORMAT_MONO16;
-    else if(channel == 2 && bitPerSample == 8)
-        format = AL_FORMAT_STEREO8;
-    else if(channel == 2 && bitPerSample == 16)
-        format = AL_FORMAT_STEREO16;
-    else
+    for(auto &source : _sources)
     {
-        //Error
-        return;
+        if(!source.inUse())
+        {
+            while((*from)->isAttached()) if(++from == to) return;
+
+            (*from)->attach(&source);
+        }
     }
-
-
-
 }
 
+void SoundSystem::detachSources(TEmitterList::iterator from, TEmitterList::iterator to)
+{
+    for(;from != to; ++from)
+        (*from)->detach();
+}
 
+void SoundSystem::registerEmitter(SoundEmitter *emitter)
+{
+    _emitters.push_back(emitter);
+}
 
+void SoundSystem::unregisterEmitter(SoundEmitter *emitter)
+{
+    _emitters.erase(std::remove(_emitters.begin(),_emitters.end(), emitter), _emitters.end());
+}
 
-#undef alCall
+SoundSystem::~SoundSystem()
+{
+    for(auto &emitter : _emitters)
+        emitter->detach();
+
+    alcMakeContextCurrent(nullptr);
+    for(auto &[source,inUse] : _sources)
+        alDeleteSources(1,&source);
+    alcDestroyContext(_context);
+    alcCloseDevice(_device);
+}
+
+SoundEmitter::SoundEmitter()
+{
+    reset();
+}
+
+SoundEmitter::~SoundEmitter()
+{
+    auto &s = soundSystem();
+    s.unregisterEmitter(this);
+    detach();
+}
+
+void SoundEmitter::setSound(Sound *s)
+{
+    _pSound = s;
+    if(!s) return;
+
+    {
+        ALenum format;
+        if(_pSound->channels == 1 && _pSound->bps == 8)
+            format = AL_FORMAT_MONO8;
+        else if(_pSound->channels == 1 && _pSound->bps == 16)
+            format = AL_FORMAT_MONO16;
+        else if(_pSound->channels == 2 && _pSound->bps == 8)
+            format = AL_FORMAT_STEREO8;
+        else if(_pSound->channels == 2 && _pSound->bps == 16)
+            format = AL_FORMAT_STEREO16;
+        else
+        {
+            std::cout << "unknown format" << std::endl;
+            return;
+        }
+
+        _timeLeft = s->length;
+        alGenBuffers(1,&_alBuffer);
+        alBufferData(_alBuffer,format,s->buffer.data(),s->buffer.size(),(ALsizei)s->sampleRate);
+    }
+}
+
+void SoundEmitter::clearSound()
+{
+    alDeleteBuffers(1,&_alBuffer);
+    _pSound = nullptr;
+}
+
+void SoundEmitter::update(float msec)
+{
+    if((_state != Playing) || !_pSound) return;
+
+    _timeLeft += msec/1000;
+
+    if(_timeLeft >= _pSound->length)
+    {
+        if(_isLooping)
+            _timeLeft = 0;
+    }
+
+    if(_alSource)
+    {
+        alSourcefv(_alSource->_sourceid, AL_POSITION, (float*)_position.origin);
+        ALint state;
+
+        alGetSourcei(_alSource->_sourceid,AL_SOURCE_STATE, &state);
+        if(state == AL_STOPPED) // AL_LOOPING is a flag that indicates that the source will not be in AL_STOPPED
+            stop();
+    }
+}
+
+void SoundEmitter::play()
+{
+    _timeLeft = 0.f;
+    if(_state == Playing) return;
+
+    auto &s = soundSystem();
+    s.registerEmitter(this);
+    _state = Playing;
+}
+
+void SoundEmitter::stop()
+{
+    if(_state == Stoped) return;
+    auto &s = soundSystem();
+    s.unregisterEmitter(this);
+    detach();
+    _state = Stoped;
+    _timeLeft = 0.f;
+}
+
+void SoundEmitter::pause()
+{
+    if(_state == Stoped) return;
+    auto &s = soundSystem();
+    s.unregisterEmitter(this);
+    detach();
+    _state = Paused;
+}
+
+void SoundEmitter::reset()
+{
+    _priority = Low;
+    _state = Initial;
+    _volume = 1.f;
+    _position.radius = 500.f;
+    _timeLeft = 0.f;
+    _position.origin = {0.f,0.f,0.f};
+    _isLooping = true;
+    detach();
+    _pSound = nullptr;
+}
+
+void SoundEmitter::setVolume(float volume)
+{
+    _volume = adjust(0.f,1.f,volume);
+    if(!_alSource) return;
+    alSourcef(_alSource->_sourceid, AL_GAIN, _volume);
+}
+
+void SoundEmitter::setLooping(bool isLooping)
+{
+    _isLooping = isLooping;
+    if(!_alSource) return;
+    alSourcei(_alSource->_sourceid, AL_LOOPING, _isLooping);
+}
+
+bool operator>(SoundEmitter &lhs, SoundEmitter &rhs)
+{
+    return lhs._priority > rhs._priority;
+}
+
+void SoundEmitter::attach(TSource *source)
+{
+    if(!_pSound) return;
+    assert(source != nullptr);
+
+    _alSource = source;
+    _alSource->_inUse = true;
+    _state = Playing;
+    alSourcef(_alSource->_sourceid, AL_MAX_DISTANCE, _position.radius);
+    alSourcef(_alSource->_sourceid, AL_REFERENCE_DISTANCE, _position.radius * 0.2f);
+    alSourcei(_alSource->_sourceid,AL_BUFFER, _alBuffer);
+    alSourcef(_alSource->_sourceid,AL_SEC_OFFSET,_timeLeft/1000.f);
+    alSourcei(_alSource->_sourceid, AL_LOOPING, _isLooping);
+    alSourcef(_alSource->_sourceid, AL_GAIN, _volume);
+}
+
+void SoundEmitter::detach()
+{
+    if(!_alSource) return;
+    alSourceStop(_alSource->_sourceid);
+    alSourcei(_alSource->_sourceid,AL_BUFFER,0);
+    alSourceRewind(_alSource->_sourceid);
+    _alSource->_inUse = false;
+    _alSource = nullptr;
+}
+
+bool SoundEmitter::isAttached() const
+{
+    return _alSource != nullptr;
+}

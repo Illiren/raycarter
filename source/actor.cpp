@@ -34,7 +34,7 @@ FRectangle2D Actor::getCollisionBody() const noexcept
 
 void Actor::update(TReal dt)
 {
-
+    (void)dt;//Unused
 }
 
 
@@ -62,8 +62,8 @@ void MovementComponent::update(TReal dt)
 
     if(int(nx) >= 0 && int(nx) < 16 && int(ny) >= 0 && int(ny)< 16)
     {
-        const size_t posX = size_t(dx)+size_t(pos.y())*map.width;
-        const size_t posY = size_t(pos.x())+size_t(dy)*map.width;
+        const size_t posX = size_t(dx)+size_t(pos.y())*map.size.x();
+        const size_t posY = size_t(pos.x())+size_t(dy)*map.size.x();
 
         if(map[posX] == ' ')
             pos.x() = nx;
@@ -78,6 +78,7 @@ CameraComponent::CameraComponent(Actor *parent) :
 
 void CameraComponent::update(TReal dt)
 {
+    (void)dt;
     camera.direction = owner->direction;
     camera.origin    = owner->position;
 }
@@ -95,6 +96,7 @@ void SpriteComponent::setTexture(const PTexture &text)
 
 void SpriteComponent::update(TReal dt)
 {
+    (void)dt;
     sprite.pos = owner->position;
 }
 

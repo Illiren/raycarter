@@ -1,109 +1,188 @@
 #pragma once
 
-#include "stddefines.hpp"
-#include <unordered_map>
-#include <memory>
+
+#include "sound.hpp"
+#include "geometry.hpp"
+#include "utility.hpp"
 #include <AL/al.h>
 #include <AL/alc.h>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <queue>
-#include <functional>
 
-struct Wav
+
+using PSound = std::weak_ptr<Sound>;
+
+class SoundSystem
 {
-    Wav(TString filename); //loader
+    struct SoundSource
+    {
+        enum State
+        {
+            Paused  = AL_PAUSED,
+            Initial = AL_INITIAL,
+            Playing = AL_PLAYING,
+            Stoped  = AL_STOPPED
+        };
 
-    Wav() = default;
-    Wav(const Wav &) = default;
-    Wav(Wav &&) = default;
-    Wav &operator=(const Wav &) = default;
-    Wav &operator=(Wav &&) = default;
+        void setVolume(float volume)
+        {
+            alSourcef(_sourceid, AL_GAIN, adjust(0.f,1.f,volume));
+        }
 
-    explicit operator bool() const noexcept;
+        void setPitch(float pitch)
+        {
+            alSourcef(_sourceid, AL_PITCH, adjust(0.f,1.f,pitch));
+        }
 
-    uint8_t         channel;
-    int32_t         sampleRate;
-    uint8_t         bitPerSample;
-    ALsizei         size = 0;
-    TArray<char>    data;
+        void setLooping(bool v)
+        {
+            alSourcei(_sourceid, AL_LOOPING, v);
+        }
+
+        void setGainRange(float min, float max)
+        {
+            alSourcef(_sourceid, AL_MIN_GAIN, min);
+            alSourcef(_sourceid, AL_MAX_GAIN, max);
+        }
+
+        State state() const
+        {
+            ALint val;
+            alGetSourcei(_sourceid, AL_SOURCE_STATE, &val);
+            return static_cast<State>(val);
+        }
+
+
+        bool inUse() const {return _inUse;}
+
+        SoundSource() :
+              _inUse(false)
+        {
+            alGenSources(1,&_sourceid);
+        }
+
+        ~SoundSource()
+        {
+            alDeleteSources(1,&_sourceid);
+        }
+
+        ALuint _sourceid;
+        bool   _inUse;
+    };
+
+
+    using TEmitterList = TArray<class SoundEmitter *>;
+    using TSourceList = TArray<SoundSource>;
+
+    friend class SoundEmitter;
+
+
+public:
+    void update(float msec);
+    void setVolume(float value);
+    void setListenerPos(Math::Vector3D<float> pos);
+
+private:
+    ALCcontext *_context;
+    ALCdevice  *_device;
+    float _masterVolume;
+
+    TSourceList  _sources;
+    TEmitterList _emitters;
+    TEmitterList _frameEmitters;
+
+    Math::Vector3D<float> _listenerPosition;
+
+    friend SoundSystem &soundSystem(unsigned int);
+
+    SoundSource *getFreeSource();
+
+    void attachSources(TEmitterList::iterator from,  TEmitterList::iterator to);
+    void detachSources(TEmitterList::iterator from,  TEmitterList::iterator to);
+
+    void registerEmitter(SoundEmitter *emitter);
+    void unregisterEmitter(SoundEmitter *emitter);
+
+    SoundSystem(unsigned int channels);
+
+    ~SoundSystem();
+
 };
 
-using PSound = std::weak_ptr<Wav>;
 
-struct SoundSequence
+inline SoundSystem &soundSystem(unsigned int channels = 32)
 {
-    SoundSequence() = default;
-    SoundSequence(PSound s);
+    static SoundSystem ss(channels);
+    return ss;
+}
 
+
+class SoundEmitter
+{
+    using TSource = SoundSystem::SoundSource;
+
+public:
+    enum Priority
+    {
+        Low,
+        Medium,
+        High,
+        Always,
+        };
+
+    enum State
+    {
+        Paused = -1,
+        Initial = 0,
+        Playing = 1,
+        Stoped = 2,
+    };
+
+public:
+    SoundEmitter();
+    ~SoundEmitter();
+
+    void setSound(Sound *s);
+    void clearSound();
+    void update(float msec);
     void play();
-    bool isPlayed() const;
-    PSound sound;
+    void stop();
+    void pause();
+    void reset();
+    void setVolume(float volume);
+    void setLooping(bool isLooping);
+    bool isAttached() const;
+    friend bool operator > (SoundEmitter &lhs, SoundEmitter &rhs);
 
 private:
-    std::weak_ptr<bool> playstate;
-    friend class Audio;
+    Sound   *_pSound = nullptr;
+    TSource *_alSource = nullptr;
+    ALuint  _alBuffer;
+
+    Priority _priority;
+    float    _timeLeft;
+    float    _volume;
+    bool     _isLooping;
+
+    Sphere<float> _position;
+    State _state;
+
+    friend class SoundSystem;
+    friend struct SoundSource;
+
+    void attach(TSource *source);
+    void detach();
 };
 
 
-class Audio
-{
-    using Thread = std::thread;
-    using TMutex = std::mutex;
-    using Task = std::function<void ()>;
-    using TCondVar = std::condition_variable;
-    template<typename T>
-    using TQueue = std::queue<T>;
-
-public:
-    friend Audio &GetAudio();
-
-    std::weak_ptr<bool> play(PSound wav, bool repeatable = false);
-    std::weak_ptr<bool> playTest(PSound wav, bool repeatable = false);
-
-
-    static TArray<TString> getAvailableDevices(ALCdevice *device);
-
-    ~Audio();
-private:    
-    ALCdevice  *openALDevice;
-    ALCcontext *openALContext;
-    ALCboolean contextMadeCurrent;
 
 
 
-    TArray<Thread> _worker;
-    TQueue<Task>   _tasks;
-    TMutex         _queueMutex;
-    TCondVar       _cond;
-    bool           _running;
-
-
-    inline void enqueue(const Task &f);
-    inline void enqueue(Task &&f);
-
-    Audio();
-};
-
-Audio &GetAudio();
 
 
 
-class AudioTest
-{
-    static constexpr TSize NumBuffers = 4;
-    static constexpr ALsizei BufferSize = 65536;
-public:
-    AudioTest();
-    ~AudioTest();
-
-    void play(const Wav &wav);
 
 
-private:
-    ALCdevice  *openALDevice;
-    ALCcontext *openALContext;
-    ALCboolean contextMadeCurrent;
 
-};
+
+
+
+

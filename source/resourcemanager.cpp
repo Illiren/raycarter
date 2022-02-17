@@ -10,7 +10,7 @@ AudioDB::AudioDB()
 bool AudioDB::load(TString filename, TString nameBase)
 {
     TString name = getName(nameBase);
-    Wav *w = new Wav(filename);
+    Sound *w = new Sound(filename);
     if(!w || !(*w))
     {
         std::cout << "Couldn't load wav" << std::endl;
@@ -52,12 +52,10 @@ TString AudioDB::getName(TString baseName) const
 }
 
 TextureDB::TextureDB() :
-    //_defaultTexture(new Texture(64,64))
     _defaultTexture(new Texture({64,64}))
 {
     for(TSize i=0;i<_defaultTexture->size.x();++i)
         for(TSize j=0;j<_defaultTexture->size.y();++j)
-            //_defaultTexture->set(i,j,Color(125,0,0));
             _defaultTexture->set({i,j},Color(125,0,0));
     _db["default"] = _defaultTexture;
 }
@@ -110,7 +108,7 @@ PTexture TextureDB::operator [](TString id) const
 
 TString TextureDB::getName(TString baseName) const
 {
-    unsigned int counter = 0;
+    TSize counter = 0;
     TString newName = baseName;
 
     while(1) //THE BAD THING
@@ -149,7 +147,7 @@ SDL_Surface *TextureDB::loadSurface(TString filename, uint32_t format)
         return nullptr;
     }
 
-    uint32_t w = surface->w;
+    int32_t w = surface->w;
 
     if(w*4!=surface->pitch)
     {
@@ -164,11 +162,10 @@ SDL_Surface *TextureDB::loadSurface(TString filename, uint32_t format)
 Texture *TextureDB::createTexture(uint32_t w, uint32_t h, uint32_t s, uint8_t *pixmap, uint32_t k)
 {
     const auto r = k*s;
-    //Texture *texture = new Texture(s, h);
     Texture *texture = new Texture({s, h});
 
-    for(int i=0;i<h;++i)
-        for(int j=0;j<s;++j)
+    for(TSize i=0;i<h;++i)
+        for(TSize j=0;j<s;++j)
         {
             const auto pindex = (j+r+i*w)*4;
             const auto index = j+i*s;

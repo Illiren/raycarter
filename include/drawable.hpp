@@ -34,7 +34,7 @@ struct Sprite : public Drawable
 
     void update() override;
 
-    uint32_t get(TSize i, TSize j, TSize spriteScreenSize) const;
+    uint32_t get(Vector2U pos, TSize spriteScreenSize) const;
 
     PTexture tex;
 };

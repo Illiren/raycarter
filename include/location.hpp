@@ -10,7 +10,7 @@
 struct Location : public GameObject
 {
     Location() = default;
-    Location(const char *map, TSize w, TSize h);
+    Location(const char *m, Vector2U s);
     Location(const Location &) = default;
     Location(Location &&) = default;
     Location &operator=(const Location &) = default;
@@ -28,21 +28,20 @@ struct Location : public GameObject
 
     Actor *trace(Vector2D origin, TReal direction, TReal dt, Actor *actorToIgnore);
     const char &operator [](TSize pos) const;
+    const char &operator [](Vector2U pos) const;
     const Texture &getWallText(TSize texId) const;
     void addWallText(PTexture txt);
     void addActor(Actor *actor);
     void removeActor(Actor *actor);
-    void setMap(const char m[], TSize w, TSize h);
-    Texture generateMinimap(TSize w, TSize h);
+    void setMap(const char m[], Vector2U pos);
+    Texture generateMinimap(Vector2U pos);
 
     TList<Actor*>   actorList;
     Texture         floor;
     Texture         ceil;
     TArray<Texture> textureDB;
     TArray<char>    map;
-    //Vector2U        size;
-    TSize           width = 0,
-                    height = 0;
+    Vector2U        size;
 
     // GameObject interface
 public:

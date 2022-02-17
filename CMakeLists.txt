@@ -52,6 +52,7 @@ file(COPY resources/monsters.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/player.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/weapon.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/test.wav DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY resources/aaaaa.wav DESTINATION "${CMAKE_BINARY_DIR}")
 file(COPY resources/smallfont.bmp DESTINATION "${CMAKE_BINARY_DIR}")
 
 

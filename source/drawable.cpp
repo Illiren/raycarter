@@ -52,10 +52,9 @@ bool Drawable::operator < (const Drawable &s) const
     return dist < s.dist;
 }
 
-uint32_t Sprite::get(TSize i, TSize j, TSize spriteScreenSize) const
+uint32_t Sprite::get(Vector2U pos, TSize spriteScreenSize) const
 {
     assert(isValid(tex) && "texture is invalid");
     const auto p = tex.lock();
-    //return p->get(i*p->h/spriteScreenSize,j*p->w/spriteScreenSize);
-    return p->get({i*p->size.y()/spriteScreenSize,j*p->size.x()/spriteScreenSize});
+    return p->get(pos*p->size/spriteScreenSize);
 }
