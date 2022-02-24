@@ -23,7 +23,8 @@ public:
 protected:
     GameLoop(TReal fpsimit = 60.f) :
           _state(Idle),
-          _fpsLimit(fpsimit)
+          _fpsLimit(fpsimit),
+          _fps(0)
     {}
     ~GameLoop()
     { }
@@ -54,7 +55,7 @@ public:
 private:
     State _state;
     TReal _fpsLimit;
-    int _fps;
+    int   _fps;
 
     TReal msPerUpdate() const noexcept { return TReal(1)/_fpsLimit; }
 

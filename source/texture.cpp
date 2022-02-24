@@ -108,7 +108,7 @@ Texture Font::createText(TString text)
             for(it.y()=0;it.y()<charSize.y();++it.y())
             {
                 const ByteVec offset = {(text[c] == 'i' || text[c] == 'I')? TByte(4) : TByte(0),
-                                        (text[c] == 'i' || text[c] == 'I')? TByte(4)  : TByte(1)};
+                                        (text[c] == 'i' || text[c] == 'I')? TByte(4) : TByte(1)};
                 const auto pos = t*(charSize+indent);
                 Color color = fontTable.get(pos + it);
                 txt.set({TSize(it.x()+c*charSize.x()+offset.x()), TSize(it.y())},color);
