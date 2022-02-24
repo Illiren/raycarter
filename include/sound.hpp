@@ -4,7 +4,7 @@
 #include <iostream>
 #include "stddefines.hpp"
 
-
+//Sound data.
 struct Sound
 {
     enum Type
@@ -37,8 +37,8 @@ struct Sound
         return !buffer.empty();
     }
 
-    uint16_t bps;
-    uint16_t format;
+    uint16_t bps;    //beat per second
+    uint16_t format; //format
     TUint32 sampleRate;
     TUint32 bitRate;
     TUint32 channels;

@@ -20,6 +20,12 @@ void SoundSystem::setListenerPos(Math::Vector3D<float> pos)
     alListener3f(AL_POSITION, _listenerPosition.x(),_listenerPosition.y(),_listenerPosition.z());
 }
 
+void SoundSystem::setListenerDir(Math::Vector3D<float> dir)
+{
+    _listenerRotation = dir;
+    alListener3f(AL_DIRECTION, _listenerRotation.x(),_listenerRotation.y(),_listenerPosition.z());
+}
+
 SoundSystem::SoundSystem(unsigned int channels)
 {
     using namespace std;
@@ -39,7 +45,7 @@ SoundSystem::SoundSystem(unsigned int channels)
 
     _context = alcCreateContext(_device,nullptr);
     alcMakeContextCurrent(_context);
-    //alDistanceModel(AL_LINEAR_DISTANCE_CLAMPED);
+    alDistanceModel(AL_LINEAR_DISTANCE_CLAMPED);
 
     _sources.resize(channels);
 
@@ -58,26 +64,25 @@ SoundSystem::SoundSource *SoundSystem::getFreeSource()
 void SoundSystem::update(float msec)
 {
     (void)msec;
-    _frameEmitters.clear();
 
-    for(auto &emitter : _emitters)
-        if(intersect(_listenerPosition,emitter->_position))
-            _frameEmitters.push_back(emitter);
+    TEmitterList attachList,
+                 detachList;
 
-    if(_frameEmitters.empty()) return;
 
-    std::sort(_frameEmitters.begin(), _frameEmitters.end(),
+    std::sort(_emitters.begin(), _emitters.end(),
               [](SoundEmitter *lhs, SoundEmitter *rhs) -> bool {return (*lhs) > (*rhs); });
 
-    if(_frameEmitters.size() > _sources.size())
-    {
-        detachSources(_frameEmitters.begin() + _sources.size(), _frameEmitters.end());
-        attachSources(_frameEmitters.begin(), _frameEmitters.begin() + _sources.size());
-    }
-    else
-    {
-        attachSources(_frameEmitters.begin(), _frameEmitters.end());
-    }
+
+    for(TSize i=0; auto &emitter : _emitters)
+        if((emitter->_isGlobal || intersect(_listenerPosition,emitter->_position)) && (i++ < _sources.size()))
+            attachList.push_back(emitter);
+        else
+            detachList.push_back(emitter);
+
+    if(!attachList.empty())
+        attachSources(attachList.begin(),attachList.end());
+    if(!detachList.empty())
+        detachSources(detachList.begin(),detachList.end());
 
     for(auto &source : _sources)
         if(source.inUse())
@@ -114,7 +119,7 @@ void SoundSystem::registerEmitter(SoundEmitter *emitter)
 }
 
 void SoundSystem::unregisterEmitter(SoundEmitter *emitter)
-{
+{    
     _emitters.erase(std::remove(_emitters.begin(),_emitters.end(), emitter), _emitters.end());
 }
 
@@ -177,30 +182,50 @@ void SoundEmitter::clearSound()
 
 void SoundEmitter::update(float msec)
 {
-    if((_state != Playing) || !_pSound) return;
+    if(!_pSound) return;
 
-    _timeLeft += msec/1000;
-
-    if(_timeLeft >= _pSound->length)
+    if(_state == Playing)
     {
-        if(_isLooping)
-            _timeLeft = 0;
+        _timeLeft += msec/1000;
+
+        if(_timeLeft >= _pSound->length)
+        {
+            if(_isLooping)
+                _timeLeft = 0.f;
+        }
     }
 
     if(_alSource)
     {
         alSourcefv(_alSource->_sourceid, AL_POSITION, (float*)_position.origin);
+        alSourcefv(_alSource->_sourceid, AL_DIRECTION,(float*)_rotation);
         ALint state;
 
         alGetSourcei(_alSource->_sourceid,AL_SOURCE_STATE, &state);
         if(state == AL_STOPPED) // AL_LOOPING is a flag that indicates that the source will not be in AL_STOPPED
-            stop();
+            requestToStop();
     }
 }
 
-void SoundEmitter::play()
+void SoundEmitter::setPosition(Math::Vector3D<float> pos)
 {
-    _timeLeft = 0.f;
+    _position.origin = pos;
+}
+
+void SoundEmitter::setDirection(Math::Vector3D<float> dir)
+{
+    _rotation = dir;
+}
+
+void SoundEmitter::setRadius(float r)
+{
+    _position.radius = r;
+    if(!_alSource) return;
+    alSourcef(_alSource->_sourceid, AL_MAX_DISTANCE, r);
+}
+
+void SoundEmitter::play()
+{    
     if(_state == Playing) return;
 
     auto &s = soundSystem();
@@ -211,20 +236,17 @@ void SoundEmitter::play()
 void SoundEmitter::stop()
 {
     if(_state == Stoped) return;
-    auto &s = soundSystem();
-    s.unregisterEmitter(this);
-    detach();
     _state = Stoped;
-    _timeLeft = 0.f;
+    if(!_alSource) return;
+    alSourceStop(_alSource->_sourceid);
 }
 
 void SoundEmitter::pause()
 {
-    if(_state == Stoped) return;
-    auto &s = soundSystem();
-    s.unregisterEmitter(this);
-    detach();
+    if(_state == Paused) return;
     _state = Paused;
+    if(!_alSource) return;
+    alSourceStop(_alSource->_sourceid);
 }
 
 void SoundEmitter::reset()
@@ -232,9 +254,10 @@ void SoundEmitter::reset()
     _priority = Low;
     _state = Initial;
     _volume = 1.f;
-    _position.radius = 500.f;
+    _position.radius = 10.f;
     _timeLeft = 0.f;
     _position.origin = {0.f,0.f,0.f};
+    _isGlobal = true;
     _isLooping = true;
     detach();
     _pSound = nullptr;
@@ -254,6 +277,13 @@ void SoundEmitter::setLooping(bool isLooping)
     alSourcei(_alSource->_sourceid, AL_LOOPING, _isLooping);
 }
 
+void SoundEmitter::setGlobal(bool isGlobal)
+{
+    _isGlobal = isGlobal;
+    //if(!_alSource) return;
+    //alSourcei(_alSource->_sourceid, AL_SOURCE_RELATIVE, !_isGlobal);
+}
+
 bool operator>(SoundEmitter &lhs, SoundEmitter &rhs)
 {
     return lhs._priority > rhs._priority;
@@ -268,10 +298,11 @@ void SoundEmitter::attach(TSource *source)
     _alSource->_inUse = true;
     _state = Playing;
     alSourcef(_alSource->_sourceid, AL_MAX_DISTANCE, _position.radius);
-    alSourcef(_alSource->_sourceid, AL_REFERENCE_DISTANCE, _position.radius * 0.2f);
+    alSourcef(_alSource->_sourceid, AL_REFERENCE_DISTANCE, _position.radius);
     alSourcei(_alSource->_sourceid,AL_BUFFER, _alBuffer);
-    alSourcef(_alSource->_sourceid,AL_SEC_OFFSET,_timeLeft/1000.f);
+    alSourcef(_alSource->_sourceid,AL_SEC_OFFSET,_timeLeft);
     alSourcei(_alSource->_sourceid, AL_LOOPING, _isLooping);
+    //alSourcei(_alSource->_sourceid, AL_SOURCE_RELATIVE, !_isGlobal);
     alSourcef(_alSource->_sourceid, AL_GAIN, _volume);
 }
 
@@ -283,6 +314,25 @@ void SoundEmitter::detach()
     alSourceRewind(_alSource->_sourceid);
     _alSource->_inUse = false;
     _alSource = nullptr;
+}
+
+void SoundEmitter::requestToStop()
+{
+    auto &s = soundSystem();
+    s.unregisterEmitter(this);
+    detach();
+    switch(_state)
+    {
+    case SoundEmitter::Paused:
+        break;
+    case SoundEmitter::Stoped:
+    case SoundEmitter::Playing:
+    {
+        _state = Stoped;
+        _timeLeft = 0.f;
+        break;
+    }
+    }
 }
 
 bool SoundEmitter::isAttached() const

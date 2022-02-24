@@ -10,7 +10,6 @@
 
 
 //TODO: Double buffer and swap buffers
-
 class Screen
 {
 public:

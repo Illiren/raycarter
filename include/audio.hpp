@@ -79,6 +79,7 @@ public:
     void update(float msec);
     void setVolume(float value);
     void setListenerPos(Math::Vector3D<float> pos);
+    void setListenerDir(Math::Vector3D<float> dir);
 
 private:
     ALCcontext *_context;
@@ -90,6 +91,7 @@ private:
     TEmitterList _frameEmitters;
 
     Math::Vector3D<float> _listenerPosition;
+    Math::Vector3D<float> _listenerRotation;
 
     friend SoundSystem &soundSystem(unsigned int);
 
@@ -126,7 +128,7 @@ public:
         Medium,
         High,
         Always,
-        };
+    };
 
     enum State
     {
@@ -143,13 +145,18 @@ public:
     void setSound(Sound *s);
     void clearSound();
     void update(float msec);
+    void setPosition(Math::Vector3D<float> pos);
+    void setDirection(Math::Vector3D<float> dir);
+    void setRadius(float r);
     void play();
     void stop();
     void pause();
     void reset();
     void setVolume(float volume);
     void setLooping(bool isLooping);
+    void setGlobal(bool isGlobal);
     bool isAttached() const;
+    State state() const {return _state;}
     friend bool operator > (SoundEmitter &lhs, SoundEmitter &rhs);
 
 private:
@@ -161,15 +168,19 @@ private:
     float    _timeLeft;
     float    _volume;
     bool     _isLooping;
+    bool     _isGlobal;
 
-    Sphere<float> _position;
-    State _state;
+    Math::Vector3D<float> _rotation;
+    Sphere<float>         _position;
+    State                 _state;
 
     friend class SoundSystem;
     friend struct SoundSource;
 
     void attach(TSource *source);
     void detach();
+
+    void requestToStop();
 };
 
 

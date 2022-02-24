@@ -143,7 +143,7 @@ public:
         _states.at(s1).links.erase(p);
     }
 
-    StateMap::size_type stateCount() const {return _states.size();}
+    auto stateCount() const {return _states.size();}
 
     void update()
     {
@@ -191,84 +191,6 @@ struct Serializable
         return nullptr;
     }
 };
-*/
-
-
-
-/*
-TArray<Vector2D> findpath(const Location &loc, Vector2D start, Vector2D end)
-{
-    using TCoord = Math::Vector2D<TSize>;
-    struct Node
-    {        
-        TSize G;
-        TSize H;
-        TCoord coordinates;
-
-        Node *parent;
-
-        Node(TCoord coord, Node *parent = nullptr);
-        TSize getScore();
-    };
-    using NodeSet = std::vector<Node*>;
-
-    Node *current = nullptr;
-    NodeSet openSet, closedSet;
-    openSet.reserve(100);
-    closedSet.reserve(100);
-    openSet.push_back(new Node(start));
-
-    while(!openSet.empty())
-    {
-        auto curIt = openSet.begin();
-        current = *curIt;
-
-        for(auto it = openSet.begin(); it != openSet.end(); ++it)
-        {
-            auto node = *it;
-            if(node->getScore() <= current->getScore())
-            {
-                current = node;
-                curIt = it;
-            }
-        }
-
-        if(current->coordinates == end)
-            break;
-
-        closedSet.push_back(current);
-        openSet.erase(curIt);
-
-        for(TSize i=0;i<directions;++i)
-        {
-            TCoord newCoord(current->coordinates + direction[i]);
-            if(detectCollision(newCoord) || findNodeOnLisrt(closedSet,newCoord))
-                continue;
-
-            TSize totalCost = current->G + ((i<4) ? 10 : 14);
-
-            Node *successor = findNodeOnList(openSet, newCoord);
-            if(successor == nullptr)
-            {
-                successor = new Node(newCoord,current);
-                successor->G = totalCost;
-                successor->H = heuristic(successor->coordinates, end);
-                openSet.push_back(successor);
-            }
-            else if(totalCost < successor->G)
-            {
-                successor->parent = current;
-                successor->G = totalCost;
-            }
-        }
-    }
-
-
-
-
-}
-
-
 
 template<typename KeyType, typename Type>
 class ResourceManagerBase

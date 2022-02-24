@@ -26,8 +26,6 @@ void Viewport::drawSprite(const Sprite &sprite)
     auto texture = sprite.tex.lock();
 
     float spriteDir = atan2(sprite.pos.y() - pos.y(), sprite.pos.x() - pos.x());
-    while(spriteDir - dir > M_PI) spriteDir -= 2*M_PI;
-    while(spriteDir - dir < -M_PI) spriteDir += 2*M_PI;
 
     auto dist = sprite.dist < 1 ? 1 : sprite.dist;
     TSize spriteScreenSize = std::min(static_cast<int>(_width/dist),
@@ -100,9 +98,10 @@ void Viewport::drawWorld()
     const auto dist = fov/2.f; //TODO: Rename
     const auto distance = camera->distance;
 
-    // Draw Floor and Ceiling
+    // Draw floor and ceiling
     const auto dirRotator = Vector2D(std::cos(direction),
                                      std::sin(direction));
+
 
     const Vector2D rayDir0(dirRotator.x() + dist*dirRotator.y(),
                            dirRotator.y() - dist*dirRotator.x());
@@ -174,7 +173,7 @@ void Viewport::drawWorld()
         }
 
 
-        //Around walls draw cells and floors
+        //Around walls draw ceiling and floors
         const TReal range = _height - _height/2;
         for(TSize j=_height/2+columnH/2; j<_height; ++j)
         {            

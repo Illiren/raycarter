@@ -6,19 +6,21 @@
 #include "screen.hpp"
 #include "drawable.hpp"
 
+//Camera class hold camera parameters
 struct Camera
 {
-    Vector2D origin;
+    Vector2D origin;  //Position of camera
     TReal direction;  //direction
     TReal fov; //field of view
     TReal distance; //distance
-    //another useful comment
+    //another useful commentary
 };
 
 
 struct CameraComponent;
 class Actor;
 
+//Viewport represend the render algorithm
 class Viewport : public Window
 {
 public:
@@ -30,12 +32,11 @@ public:
     TSize fps = 0;
     TReal dt = 0.01f;
 
-    //GUI
+    //Temporary GUI
     Texture hudWeapon;
     Texture playerFace;
 
-private:
-    //CameraComponent *camera = nullptr;
+private:    
     Camera *camera = nullptr;
     Actor *actor = nullptr;
     TArray<float> depthBuffer;

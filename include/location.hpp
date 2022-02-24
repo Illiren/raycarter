@@ -4,11 +4,13 @@
 #include "geometry.hpp"
 #include "game_object.hpp"
 #include "actor.hpp"
-
+#include <stack>
 
 
 struct Location : public GameObject
 {
+    using Path = std::stack<Vector2I>;
+
     Location() = default;
     Location(const char *m, Vector2U s);
     Location(const Location &) = default;
@@ -46,6 +48,13 @@ struct Location : public GameObject
     // GameObject interface
 public:
     void update(TReal dt) override;
+    
+
+public: //pathfinding
+    bool isValid(const Vector2I &point);
+    bool isBlocked(const Vector2I &point);
+    Path pathfinder(Vector2I src, Vector2I dest);//A * algorithm
+    //TODO: Wave propagation
 };
 
 struct World
@@ -56,5 +65,7 @@ struct World
     //Texture map();
     THashMap<TString, Location*> locationMap;
 };
+
+
 
 

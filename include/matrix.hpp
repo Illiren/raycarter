@@ -2227,18 +2227,18 @@ bool operator!=(const Matrix<T, Row, Col> lhs, const Matrix<T, Row, Col> rhs)
 {
     for (TSize i = Row; i--;)
         for (TSize j = Col; j--;)
-            if (lhs[i][j] == rhs[i][j])
-                return false;
-    return true;
+            if (lhs[i][j] != rhs[i][j])
+                return true;
+    return false;
 }
 
 template <typename T, TSize Dim>
 bool operator!=(Matrix<T, 1, Dim> lhs, Matrix<T, 1, Dim> rhs)
 {
     for (TSize i = Dim; i--;)
-        if (lhs[i] == rhs[i])
-            return false;
-    return true;
+        if (lhs[i] != rhs[i])
+            return true;
+    return false;
 }
 
 // Nomalize matrix

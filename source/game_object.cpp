@@ -9,8 +9,10 @@ GarbageCollector &GC()
 
 GameObject::GameObject()
 {
-    static TSize i = 0; //Bad UID
-    name = "Object " + std::to_string(i++);
+    //static TSize i = 0; //Bad UID
+    //It be cool, if c++ has reflection
+    name = "Object " + reinterpret_cast<TSize>(this);//std::to_string(i++);
+    //object and its address
 }
 
 void *GameObject::operator new(std::size_t count, GameObject *parent)
@@ -58,9 +60,7 @@ void GameObject::markChildren()
 
 
 GameObject::~GameObject()
-{
-
-}
+{}
 
 
 

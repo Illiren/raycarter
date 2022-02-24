@@ -23,11 +23,11 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
     GetInputManager()['s'].keyupEvent = [this](){moveStop();};
 
     GetInputManager()['e'].keyupEvent = [this](){interact();};
-    GetInputManager()['c'].keydownEvent = [this](){scream();};
-    GetInputManager()['c'].keyupEvent = [this](){shutup();};
+    GetInputManager()['c'].keydownEvent = [this](){playMusic();};
+    //GetInputManager()['c'].keyupEvent = [this](){pauseMusic();};
 
-    GetInputManager()[SDLK_LSHIFT].keydownEvent = [this](){sprintOn(); /*scream();*/};
-    GetInputManager()[SDLK_LSHIFT].keyupEvent = [this](){sprintOff(); /*shutup();*/};
+    GetInputManager()[SDLK_LSHIFT].keydownEvent = [this](){sprintOn(); scream();};
+    GetInputManager()[SDLK_LSHIFT].keyupEvent = [this](){sprintOff(); shutup();};
 
 
     rm.loadTexture("monsters.bmp",4,"avatar");
@@ -36,6 +36,7 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
 
     rm.loadAudio("test.wav","test");
     //rm.loadAudio("aaaaa.wav","aaaa");
+    //rm.loadAudio("01.wav", "music");
 
     viewport.playerFace = *rm.texture("player").lock().get();
     viewport.hudWeapon = *rm.texture("weapon").lock().get();
@@ -51,7 +52,13 @@ RayCarter::RayCarter(Rectangle2D<TSize> winSize, TReal fpsLimit) :
     ss.setVolume(0.1f);
 
     se.setSound(sound);
+    //se.setLooping(false);
+    //se.setGlobal(false);
     se.setVolume(1.f);
+
+
+    //auto m = rm.sound("music").lock().get();
+    //music.setSound(m);
 }
 
 RayCarter::~RayCarter()
@@ -98,6 +105,7 @@ void RayCarter::initPlayer(Mode mode)
 
     NPC_Drake *drake = world["level0"]->spawn<NPC_Drake>({4.0f,13.4f});
     drake->spriteComponent->setTexture(rm.texture("avatar2"));
+    drakecontroller = new NPC_Drake_Controller(drake);
 }
 
 void RayCarter::physX()
@@ -236,10 +244,21 @@ void RayCarter::update(TReal lag)
     GC().update(lag);
     GC().collect(false);
 
-    se.update(lag);
-    ss.update(lag);
+    auto pos = controller->getOwner()->position;
+    auto rot = controller->getOwner()->direction;
 
-    if(currentMode == Multiplayer && controller->isValid())
+    se.update(lag);
+    music.update(lag);
+    ss.update(lag);
+    drakecontroller->update(lag);    
+    drakecontroller->goTo(pos);
+
+    se.setPosition({pos.x(),pos.y(), 0.f});
+    ss.setListenerPos({pos.x(), pos.y(), 0.f});
+    ss.setListenerDir({std::cos(rot),std::sin(rot),0.f});
+
+
+    if(currentMode == Multiplayer && controller)
     {        
         auto player = dynamic_cast<Player *>(controller->getOwner());
 
@@ -310,6 +329,14 @@ void RayCarter::scream()
 void RayCarter::shutup()
 {
     se.stop();
+}
+
+void RayCarter::playMusic()
+{
+    /*if(music.state() == SoundEmitter::Playing)
+        music.pause();
+    else
+        music.play();*/
 }
 
 Player *RayCarter::desc2Actor(const PlayerDescription &desc)

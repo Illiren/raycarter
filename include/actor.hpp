@@ -7,18 +7,19 @@
 class Actor;
 struct Location;
 
+//Actor component is Game Object with pointer to owner
 struct ActorComponent : public GameObject
 {
 public:
     ActorComponent(Actor *actorParent);
-
     Actor *getOwner() const noexcept;
 
 protected:
     Actor *owner;
 };
 
-
+//Actor is Game Object with position, direction on location
+//It's has List of it's components
 class Actor : public GameObject
 {
 public:
@@ -28,8 +29,10 @@ public:
     ~Actor() override;
 
     FRectangle2D getCollisionBody() const noexcept;
-    virtual void onInterract(Actor *causer) {(void)causer;} //Unused
-    virtual void onCollision(Actor *causer) {(void)causer;} //Unused
+    virtual void onInterract(Actor *) {}
+    virtual void onCollision(Actor *) {}
+
+    TReal    collisionRect = 0.5f;
     TReal    direction;
     Vector2D position;
     Location *location;
@@ -45,7 +48,7 @@ public:
     void update(TReal dt) override;
 };
 
-
+//Movement component represent movement of Actor
 struct MovementComponent : public ActorComponent
 {
     enum WalkState
@@ -70,6 +73,7 @@ public:
     void update(TReal dt) override;
 };
 
+//Camera connect actor with camera
 struct CameraComponent : public ActorComponent
 {
 public:
@@ -82,6 +86,7 @@ public:
     void update(TReal dt) override;
 };
 
+//Sprite connect actor with sprite
 struct SpriteComponent : public ActorComponent
 {
     SpriteComponent(Actor *parent);
@@ -93,6 +98,7 @@ public:
     void update(TReal dt) override;
 };
 
+//Pawn is Actor that can move and has some graphical representation
 struct Pawn : public Actor
 {
 public:
@@ -102,7 +108,7 @@ public:
     SpriteComponent   *spriteComponent;
 };
 
-
+//Player is Pawn with camera
 struct Player : public Pawn
 {
 public:
@@ -112,3 +118,5 @@ public:
 
     void doInteract();
 };
+
+

@@ -49,6 +49,8 @@ int main()
     loc->floor = *test["wall1"].lock().get();
     loc->ceil = *test["wall0"].lock().get();
 
+    auto path = loc->pathfinder({3,3},{9,8});
+
     game.addLocation(std::move(loc),"level0");
 
     GetInputManager()[SDLK_ESCAPE].keydownEvent = [&game,&debug](){debug = false; game.stop();};

@@ -6,6 +6,7 @@
 #include "geometry.hpp"
 #include "color.hpp"
 
+//Texture data
 struct Texture
 {
     Texture();
@@ -33,6 +34,7 @@ inline bool isValid(const PTexture &weak)
     return !weak.expired();
 }
 
+//Font texture data
 struct Font
 {
     using ByteVec = Math::Vector2D<uint8_t>;

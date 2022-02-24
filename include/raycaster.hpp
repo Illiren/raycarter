@@ -13,7 +13,7 @@
 #include "actor.hpp"
 #include "resourcemanager.hpp"
 #include <functional>
-
+#include <stack>
 
 struct PlayerDescription
 {
@@ -51,6 +51,65 @@ enum class CustomMsgTypes : uint32_t
     PlayerAction,
 };
 
+//Test Controller for Test npc
+class NPC_Drake_Controller : public GameObject
+{
+
+public:
+    NPC_Drake_Controller(Pawn *owner) :
+          GameObject(),
+          _owner(owner)
+    {}
+
+
+    void goTo(const Vector2I &dest)
+    {
+        if(!_owner && !_owner->location) return;
+        auto loc = _owner->location;
+        Vector2I pos = _owner->position;
+        _path = loc->pathfinder(pos,dest);
+    }
+
+    // GameObject interface
+public:
+    void update(TReal dt) override
+    {
+        (void)dt;
+        if(!_owner) return;
+
+        auto mc = _owner->movementComponent;
+
+        if(!mc) return;
+
+        if(!_path.empty())
+        {            
+            auto &target = _path.top();
+            const auto &position = _owner->position;
+
+            if((floor(position.x()) == target.x()) &&
+               (floor(position.y()) == target.y()))
+            {
+                _path.pop();
+                target = _path.top();
+            }
+
+            auto diff = target-position;
+            _owner->direction = atan2(diff.y(),diff.x());
+            mc->speed = mc->maxSpeed;
+        }
+        else
+        {
+            mc->speed = 0;            
+        }
+    }
+
+private:
+    Pawn *_owner;
+    Location::Path _path;
+};
+
+
+//Test NPC
 class NPC_Drake : public Pawn
 {
 public:
@@ -58,12 +117,16 @@ public:
           Pawn()
     {
         sound.setSound(RM().sound("test").lock().get());
-        sound.setLooping(false);
+        sound.setLooping(true);
+        sound.setGlobal(false);
+        collisionRect = 0.9f;
     }
 
     void update(float ms) override
     {
         Pawn::update(ms);
+        sound.setPosition({position.x(), position.y(), 0.f});
+        sound.setDirection({std::cos(direction),std::sin(direction),0.f});
         sound.update(ms);
     }
 
@@ -128,6 +191,7 @@ private:
     void interact();
     void scream();
     void shutup();
+    void playMusic();
 
     THashMap<uint32_t, Player*> playerMap;
 
@@ -142,6 +206,10 @@ private:
     //INFO Sound System Test
     SoundSystem &ss;
     SoundEmitter se;
+    SoundEmitter music;
+
+
+    NPC_Drake_Controller *drakecontroller;
 
 private:
     void physX();

@@ -145,36 +145,6 @@ const Color Color::Crimson = {0xFF,0x00,0x80,0xFF};
 const Color Color::Scarlet = {0xFF,0x00,0x80,0xFF};
 const Color Color::Carmine = {0xFF,0x00,0x40,0xFF};
 
-/*
-Color::Color(const Color &color) noexcept:
-      _rawData(color._rawData)
-{}
-
-Color &Color::operator=(const Color &color) noexcept
-{
-    _rawData = color._rawData;
-    return *this;
-}
-
-Color &Color::operator-=(const Color &color) noexcept
-{
-    _red-=color._red;
-    _blue-=color._blue;
-    _green-=color._green;
-    _alpha-=color._alpha;
-    return *this;
-}
-
-Color &Color::operator+=(const Color &color) noexcept
-{
-    _red-=color._red;
-    _blue-=color._blue;
-    _green-=color._green;
-    _alpha-=color._alpha;
-
-    return *this;
-}
-*/
 
 
 

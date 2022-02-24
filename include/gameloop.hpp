@@ -17,7 +17,7 @@ public:
 
     GameLoop()
     {
-        static_assert(true, "Wrong use of the class. Inheritance needed");
+        static_assert(true, "Wrong use of the class. Inheritance is needed");
     }
 
 protected:
@@ -82,7 +82,14 @@ private:
             static_cast<Base*>(this)->input();
 
             if(_state != Pause)
+            {
                 static_cast<Base*>(this)->update(lag);
+                /*while(lag>0.f) //More correct way
+                {
+                    static_cast<Base*>(this)->update(msPerUpdate());
+                    lag-=msPerUpdate();
+                }*/
+            }
 
             static_cast<Base*>(this)->render();
 

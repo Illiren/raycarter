@@ -26,8 +26,8 @@ Actor::~Actor()
 FRectangle2D Actor::getCollisionBody() const noexcept
 {
     Rectangle2D<TReal> rect;
-    rect.topleft = position - 0.4f;
-    rect.botright = position + 0.4f;
+    rect.topleft = position - collisionRect;
+    rect.botright = position + collisionRect;
 
     return rect;
 }
@@ -48,27 +48,29 @@ void MovementComponent::update(TReal dt)
     TReal &dir = owner->direction;
     Vector2D &pos = owner->position;
     Location &map = *owner->location;
+
+
+
     dir += float(turn)*maxSpeed*dt;
+    Vector2D rotator = {std::cos(dir),
+                        std::sin(dir)};
 
-    constexpr float length=0.5;
-    const auto cosa = std::cos(dir);
-    const auto sina = std::sin(dir);
+    const Vector2D newPos = pos + rotator*speed*runSpeedMultiplier*dt;
 
-    float nx = pos.x() + cosa*speed*runSpeedMultiplier*dt;
-    float ny = pos.y() + sina*speed*runSpeedMultiplier*dt;
+    auto sign = (speed > 0) ? 1.f : -1.f;
+    const float dimensions = owner->collisionRect;
+    Vector2D border =  newPos + sign * rotator * dimensions;
 
-    float dx = length*cosa+nx;
-    float dy = length*sina+ny;
-
-    if(int(nx) >= 0 && int(nx) < 16 && int(ny) >= 0 && int(ny)< 16)
+    if(int(newPos.x()) >= 0 && newPos.x() < map.size.x() &&
+       int(newPos.y()) >= 0 && newPos.y() < map.size.y())
     {
-        const size_t posX = size_t(dx)+size_t(pos.y())*map.size.x();
-        const size_t posY = size_t(pos.x())+size_t(dy)*map.size.x();
+        const size_t posX = size_t(border.x())+size_t(pos.y())*map.size.x();
+        const size_t posY = size_t(pos.x())+size_t(border.y())*map.size.x();
 
         if(map[posX] == ' ')
-            pos.x() = nx;
+            pos.x() = newPos.x();
         if(map[posY] == ' ')
-            pos.y() = ny;
+            pos.y() = newPos.y();
     }
 }
 
